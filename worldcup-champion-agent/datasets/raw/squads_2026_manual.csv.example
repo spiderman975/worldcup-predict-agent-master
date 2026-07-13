@@ -1,0 +1,6 @@
+team_name,player_name,position,source_note,attack_source,defensive_source,attack_raw,defensive_raw,injured,injury_description
+Argentina,Example Goalkeeper,GK,manual_curated,position_fallback,position_fallback,,,0,
+Argentina,Example Defender,DF,manual_curated,position_fallback,position_fallback,,,0,
+Argentina,Example Midfielder,MF,manual_curated,position_fallback,position_fallback,,,0,
+Argentina,Example Forward,FW,manual_curated,position_fallback,position_fallback,,,0,
+Brazil,Example Rated Forward,FW,manual_curated,rating,rating,88,41,0,

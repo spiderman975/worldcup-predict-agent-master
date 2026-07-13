@@ -1,0 +1,30 @@
+backend/.venv/
+backend/.pytest_cache/
+backend/__pycache__/
+backend/app/**/__pycache__/
+backend/worldcup_agent.db
+backend/.local_vector_store/
+frontend/node_modules/
+frontend/dist/
+data/snapshots/*.json
+.DS_Store
+.edge-debug-profile/
+debug-*.png
+data/vector_store/
+
+# my-claude-code 本地运行数据
+.agent_data/
+my-claude-code/__pycache__/
+my-claude-code/**/__pycache__/
+
+# Edge 浏览器调试配置（本地自动生成，勿提交）
+.edge-debug-profile/
+
+# 环境变量（含 API Key）
+backend/.env
+.env
+
+# 编辑器 / IDE
+.vscode/
+.idea/
+*.log

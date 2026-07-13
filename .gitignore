@@ -1,0 +1,48 @@
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*.pyc
+.pytest_cache/
+
+# ===== 虚拟环境 =====
+.venv/
+venv/
+env/
+
+# ===== 环境变量 / 本地配置（可能含密钥，勿提交）=====
+# 注意：.env.example 为示例文件，不受影响，会正常提交
+.env
+.env.local
+.env.*.local
+
+# ===== 前端依赖 / 构建产物 =====
+node_modules/
+dist/
+build/
+
+# ===== 数据库文件（可用种子脚本重建；临时文件必须忽略）=====
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# ===== 数据快照 / 备份 =====
+**/data/backups/
+**/data/snapshots/*.json
+**/.local_vector_store/
+**/vector_store/
+
+# ===== Agent 本地运行数据 =====
+.agent_data/
+
+# ===== 日志与调试文件 =====
+*.log
+debug-*.png
+.edge-debug-profile/
+
+# ===== 编辑器 / 操作系统 =====
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

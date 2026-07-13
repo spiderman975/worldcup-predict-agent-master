@@ -1,0 +1,529 @@
+team_name,player_name
+Czechia,Czechia Player 01
+Czechia,Czechia Player 02
+Czechia,Czechia Player 03
+Czechia,Czechia Player 04
+Czechia,Czechia Player 05
+Czechia,Czechia Player 06
+Czechia,Czechia Player 07
+Czechia,Czechia Player 08
+Czechia,Czechia Player 09
+Czechia,Czechia Player 10
+Czechia,Czechia Player 11
+Mexico,Mexico GK
+Mexico,Mexico DF1
+Mexico,Mexico DF2
+Mexico,Mexico DF3
+Mexico,Mexico DF4
+Mexico,Mexico MF1
+Mexico,Mexico MF2
+Mexico,Mexico MF3
+Mexico,Mexico FW1
+Mexico,Mexico FW2
+Mexico,Mexico FW3
+South Africa,South Africa GK
+South Africa,South Africa DF1
+South Africa,South Africa DF2
+South Africa,South Africa DF3
+South Africa,South Africa DF4
+South Africa,South Africa MF1
+South Africa,South Africa MF2
+South Africa,South Africa MF3
+South Africa,South Africa FW1
+South Africa,South Africa FW2
+South Africa,South Africa FW3
+South Korea,South Korea GK
+South Korea,South Korea DF1
+South Korea,South Korea DF2
+South Korea,South Korea DF3
+South Korea,South Korea DF4
+South Korea,South Korea MF1
+South Korea,South Korea MF2
+South Korea,South Korea MF3
+South Korea,South Korea FW1
+South Korea,South Korea FW2
+South Korea,South Korea FW3
+Bosnia and Herzegovina,Bosnia and Herzegovina Player 01
+Bosnia and Herzegovina,Bosnia and Herzegovina Player 02
+Bosnia and Herzegovina,Bosnia and Herzegovina Player 03
+Bosnia and Herzegovina,Bosnia and Herzegovina Player 04
+Bosnia and Herzegovina,Bosnia and Herzegovina Player 05
+Bosnia and Herzegovina,Bosnia and Herzegovina Player 06
+Bosnia and Herzegovina,Bosnia and Herzegovina Player 07
+Bosnia and Herzegovina,Bosnia and Herzegovina Player 08
+Bosnia and Herzegovina,Bosnia and Herzegovina Player 09
+Bosnia and Herzegovina,Bosnia and Herzegovina Player 10
+Bosnia and Herzegovina,Bosnia and Herzegovina Player 11
+Canada,Canada GK
+Canada,Canada DF1
+Canada,Canada DF2
+Canada,Canada DF3
+Canada,Canada DF4
+Canada,Canada MF1
+Canada,Canada MF2
+Canada,Canada MF3
+Canada,Canada FW1
+Canada,Canada FW2
+Canada,Canada FW3
+Qatar,Qatar GK
+Qatar,Qatar DF1
+Qatar,Qatar DF2
+Qatar,Qatar DF3
+Qatar,Qatar DF4
+Qatar,Qatar MF1
+Qatar,Qatar MF2
+Qatar,Qatar MF3
+Qatar,Qatar FW1
+Qatar,Qatar FW2
+Qatar,Qatar FW3
+Switzerland,Switzerland GK
+Switzerland,Switzerland DF1
+Switzerland,Switzerland DF2
+Switzerland,Switzerland DF3
+Switzerland,Switzerland DF4
+Switzerland,Switzerland MF1
+Switzerland,Switzerland MF2
+Switzerland,Switzerland MF3
+Switzerland,Switzerland FW1
+Switzerland,Switzerland FW2
+Switzerland,Switzerland FW3
+Brazil,Brazil GK
+Brazil,Brazil DF1
+Brazil,Brazil DF2
+Brazil,Brazil DF3
+Brazil,Brazil DF4
+Brazil,Brazil MF1
+Brazil,Brazil MF2
+Brazil,Brazil MF3
+Brazil,Brazil FW1
+Brazil,Brazil FW2
+Brazil,Brazil FW3
+Haiti,Haiti Player 01
+Haiti,Haiti Player 02
+Haiti,Haiti Player 03
+Haiti,Haiti Player 04
+Haiti,Haiti Player 05
+Haiti,Haiti Player 06
+Haiti,Haiti Player 07
+Haiti,Haiti Player 08
+Haiti,Haiti Player 09
+Haiti,Haiti Player 10
+Haiti,Haiti Player 11
+Morocco,Morocco GK
+Morocco,Morocco DF1
+Morocco,Morocco DF2
+Morocco,Morocco DF3
+Morocco,Morocco DF4
+Morocco,Morocco MF1
+Morocco,Morocco MF2
+Morocco,Morocco MF3
+Morocco,Morocco FW1
+Morocco,Morocco FW2
+Morocco,Morocco FW3
+Scotland,Scotland Player 01
+Scotland,Scotland Player 02
+Scotland,Scotland Player 03
+Scotland,Scotland Player 04
+Scotland,Scotland Player 05
+Scotland,Scotland Player 06
+Scotland,Scotland Player 07
+Scotland,Scotland Player 08
+Scotland,Scotland Player 09
+Scotland,Scotland Player 10
+Scotland,Scotland Player 11
+Australia,Australia GK
+Australia,Australia DF1
+Australia,Australia DF2
+Australia,Australia DF3
+Australia,Australia DF4
+Australia,Australia MF1
+Australia,Australia MF2
+Australia,Australia MF3
+Australia,Australia FW1
+Australia,Australia FW2
+Australia,Australia FW3
+Paraguay,Paraguay Player 01
+Paraguay,Paraguay Player 02
+Paraguay,Paraguay Player 03
+Paraguay,Paraguay Player 04
+Paraguay,Paraguay Player 05
+Paraguay,Paraguay Player 06
+Paraguay,Paraguay Player 07
+Paraguay,Paraguay Player 08
+Paraguay,Paraguay Player 09
+Paraguay,Paraguay Player 10
+Paraguay,Paraguay Player 11
+Turkey,Turkey GK
+Turkey,Turkey DF1
+Turkey,Turkey DF2
+Turkey,Turkey DF3
+Turkey,Turkey DF4
+Turkey,Turkey MF1
+Turkey,Turkey MF2
+Turkey,Turkey MF3
+Turkey,Turkey FW1
+Turkey,Turkey FW2
+Turkey,Turkey FW3
+United States,United States GK
+United States,United States DF1
+United States,United States DF2
+United States,United States DF3
+United States,United States DF4
+United States,United States MF1
+United States,United States MF2
+United States,United States MF3
+United States,United States FW1
+United States,United States FW2
+United States,United States FW3
+Curacao,Curacao Player 01
+Curacao,Curacao Player 02
+Curacao,Curacao Player 03
+Curacao,Curacao Player 04
+Curacao,Curacao Player 05
+Curacao,Curacao Player 06
+Curacao,Curacao Player 07
+Curacao,Curacao Player 08
+Curacao,Curacao Player 09
+Curacao,Curacao Player 10
+Curacao,Curacao Player 11
+Ecuador,Ecuador GK
+Ecuador,Ecuador DF1
+Ecuador,Ecuador DF2
+Ecuador,Ecuador DF3
+Ecuador,Ecuador DF4
+Ecuador,Ecuador MF1
+Ecuador,Ecuador MF2
+Ecuador,Ecuador MF3
+Ecuador,Ecuador FW1
+Ecuador,Ecuador FW2
+Ecuador,Ecuador FW3
+Germany,Germany GK
+Germany,Germany DF1
+Germany,Germany DF2
+Germany,Germany DF3
+Germany,Germany DF4
+Germany,Germany MF1
+Germany,Germany MF2
+Germany,Germany MF3
+Germany,Germany FW1
+Germany,Germany FW2
+Germany,Germany FW3
+Ivory Coast,Ivory Coast GK
+Ivory Coast,Ivory Coast DF1
+Ivory Coast,Ivory Coast DF2
+Ivory Coast,Ivory Coast DF3
+Ivory Coast,Ivory Coast DF4
+Ivory Coast,Ivory Coast MF1
+Ivory Coast,Ivory Coast MF2
+Ivory Coast,Ivory Coast MF3
+Ivory Coast,Ivory Coast FW1
+Ivory Coast,Ivory Coast FW2
+Ivory Coast,Ivory Coast FW3
+Japan,Japan GK
+Japan,Japan DF1
+Japan,Japan DF2
+Japan,Japan DF3
+Japan,Japan DF4
+Japan,Japan MF1
+Japan,Japan MF2
+Japan,Japan MF3
+Japan,Japan FW1
+Japan,Japan FW2
+Japan,Japan FW3
+Netherlands,Netherlands GK
+Netherlands,Netherlands DF1
+Netherlands,Netherlands DF2
+Netherlands,Netherlands DF3
+Netherlands,Netherlands DF4
+Netherlands,Netherlands MF1
+Netherlands,Netherlands MF2
+Netherlands,Netherlands MF3
+Netherlands,Netherlands FW1
+Netherlands,Netherlands FW2
+Netherlands,Netherlands FW3
+Sweden,Sweden Player 01
+Sweden,Sweden Player 02
+Sweden,Sweden Player 03
+Sweden,Sweden Player 04
+Sweden,Sweden Player 05
+Sweden,Sweden Player 06
+Sweden,Sweden Player 07
+Sweden,Sweden Player 08
+Sweden,Sweden Player 09
+Sweden,Sweden Player 10
+Sweden,Sweden Player 11
+Tunisia,Tunisia GK
+Tunisia,Tunisia DF1
+Tunisia,Tunisia DF2
+Tunisia,Tunisia DF3
+Tunisia,Tunisia DF4
+Tunisia,Tunisia MF1
+Tunisia,Tunisia MF2
+Tunisia,Tunisia MF3
+Tunisia,Tunisia FW1
+Tunisia,Tunisia FW2
+Tunisia,Tunisia FW3
+Belgium,Belgium GK
+Belgium,Belgium DF1
+Belgium,Belgium DF2
+Belgium,Belgium DF3
+Belgium,Belgium DF4
+Belgium,Belgium MF1
+Belgium,Belgium MF2
+Belgium,Belgium MF3
+Belgium,Belgium FW1
+Belgium,Belgium FW2
+Belgium,Belgium FW3
+Egypt,Egypt GK
+Egypt,Egypt DF1
+Egypt,Egypt DF2
+Egypt,Egypt DF3
+Egypt,Egypt DF4
+Egypt,Egypt MF1
+Egypt,Egypt MF2
+Egypt,Egypt MF3
+Egypt,Egypt FW1
+Egypt,Egypt FW2
+Egypt,Egypt FW3
+Iran,Iran GK
+Iran,Iran DF1
+Iran,Iran DF2
+Iran,Iran DF3
+Iran,Iran DF4
+Iran,Iran MF1
+Iran,Iran MF2
+Iran,Iran MF3
+Iran,Iran FW1
+Iran,Iran FW2
+Iran,Iran FW3
+New Zealand,New Zealand GK
+New Zealand,New Zealand DF1
+New Zealand,New Zealand DF2
+New Zealand,New Zealand DF3
+New Zealand,New Zealand DF4
+New Zealand,New Zealand MF1
+New Zealand,New Zealand MF2
+New Zealand,New Zealand MF3
+New Zealand,New Zealand FW1
+New Zealand,New Zealand FW2
+New Zealand,New Zealand FW3
+Cape Verde,Cape Verde Player 01
+Cape Verde,Cape Verde Player 02
+Cape Verde,Cape Verde Player 03
+Cape Verde,Cape Verde Player 04
+Cape Verde,Cape Verde Player 05
+Cape Verde,Cape Verde Player 06
+Cape Verde,Cape Verde Player 07
+Cape Verde,Cape Verde Player 08
+Cape Verde,Cape Verde Player 09
+Cape Verde,Cape Verde Player 10
+Cape Verde,Cape Verde Player 11
+Saudi Arabia,Saudi Arabia GK
+Saudi Arabia,Saudi Arabia DF1
+Saudi Arabia,Saudi Arabia DF2
+Saudi Arabia,Saudi Arabia DF3
+Saudi Arabia,Saudi Arabia DF4
+Saudi Arabia,Saudi Arabia MF1
+Saudi Arabia,Saudi Arabia MF2
+Saudi Arabia,Saudi Arabia MF3
+Saudi Arabia,Saudi Arabia FW1
+Saudi Arabia,Saudi Arabia FW2
+Saudi Arabia,Saudi Arabia FW3
+Spain,Spain GK
+Spain,Spain DF1
+Spain,Spain DF2
+Spain,Spain DF3
+Spain,Spain DF4
+Spain,Spain MF1
+Spain,Spain MF2
+Spain,Spain MF3
+Spain,Spain FW1
+Spain,Spain FW2
+Spain,Spain FW3
+Uruguay,Uruguay GK
+Uruguay,Uruguay DF1
+Uruguay,Uruguay DF2
+Uruguay,Uruguay DF3
+Uruguay,Uruguay DF4
+Uruguay,Uruguay MF1
+Uruguay,Uruguay MF2
+Uruguay,Uruguay MF3
+Uruguay,Uruguay FW1
+Uruguay,Uruguay FW2
+Uruguay,Uruguay FW3
+France,France GK
+France,France DF1
+France,France DF2
+France,France DF3
+France,France DF4
+France,France MF1
+France,France MF2
+France,France MF3
+France,France FW1
+France,France FW2
+France,France FW3
+Iraq,Iraq GK
+Iraq,Iraq DF1
+Iraq,Iraq DF2
+Iraq,Iraq DF3
+Iraq,Iraq DF4
+Iraq,Iraq MF1
+Iraq,Iraq MF2
+Iraq,Iraq MF3
+Iraq,Iraq FW1
+Iraq,Iraq FW2
+Iraq,Iraq FW3
+Norway,Norway GK
+Norway,Norway DF1
+Norway,Norway DF2
+Norway,Norway DF3
+Norway,Norway DF4
+Norway,Norway MF1
+Norway,Norway MF2
+Norway,Norway MF3
+Norway,Norway FW1
+Norway,Norway FW2
+Norway,Norway FW3
+Senegal,Senegal GK
+Senegal,Senegal DF1
+Senegal,Senegal DF2
+Senegal,Senegal DF3
+Senegal,Senegal DF4
+Senegal,Senegal MF1
+Senegal,Senegal MF2
+Senegal,Senegal MF3
+Senegal,Senegal FW1
+Senegal,Senegal FW2
+Senegal,Senegal FW3
+Algeria,Algeria Player 01
+Algeria,Algeria Player 02
+Algeria,Algeria Player 03
+Algeria,Algeria Player 04
+Algeria,Algeria Player 05
+Algeria,Algeria Player 06
+Algeria,Algeria Player 07
+Algeria,Algeria Player 08
+Algeria,Algeria Player 09
+Algeria,Algeria Player 10
+Algeria,Algeria Player 11
+Argentina,Argentina GK
+Argentina,Argentina DF1
+Argentina,Argentina DF2
+Argentina,Argentina DF3
+Argentina,Argentina DF4
+Argentina,Argentina MF1
+Argentina,Argentina MF2
+Argentina,Argentina MF3
+Argentina,Argentina FW1
+Argentina,Argentina FW2
+Argentina,Argentina FW3
+Austria,Austria GK
+Austria,Austria DF1
+Austria,Austria DF2
+Austria,Austria DF3
+Austria,Austria DF4
+Austria,Austria MF1
+Austria,Austria MF2
+Austria,Austria MF3
+Austria,Austria FW1
+Austria,Austria FW2
+Austria,Austria FW3
+Jordan,Jordan Player 01
+Jordan,Jordan Player 02
+Jordan,Jordan Player 03
+Jordan,Jordan Player 04
+Jordan,Jordan Player 05
+Jordan,Jordan Player 06
+Jordan,Jordan Player 07
+Jordan,Jordan Player 08
+Jordan,Jordan Player 09
+Jordan,Jordan Player 10
+Jordan,Jordan Player 11
+Colombia,Colombia GK
+Colombia,Colombia DF1
+Colombia,Colombia DF2
+Colombia,Colombia DF3
+Colombia,Colombia DF4
+Colombia,Colombia MF1
+Colombia,Colombia MF2
+Colombia,Colombia MF3
+Colombia,Colombia FW1
+Colombia,Colombia FW2
+Colombia,Colombia FW3
+DR Congo,DR Congo Player 01
+DR Congo,DR Congo Player 02
+DR Congo,DR Congo Player 03
+DR Congo,DR Congo Player 04
+DR Congo,DR Congo Player 05
+DR Congo,DR Congo Player 06
+DR Congo,DR Congo Player 07
+DR Congo,DR Congo Player 08
+DR Congo,DR Congo Player 09
+DR Congo,DR Congo Player 10
+DR Congo,DR Congo Player 11
+Portugal,Portugal GK
+Portugal,Portugal DF1
+Portugal,Portugal DF2
+Portugal,Portugal DF3
+Portugal,Portugal DF4
+Portugal,Portugal MF1
+Portugal,Portugal MF2
+Portugal,Portugal MF3
+Portugal,Portugal FW1
+Portugal,Portugal FW2
+Portugal,Portugal FW3
+Uzbekistan,Uzbekistan GK
+Uzbekistan,Uzbekistan DF1
+Uzbekistan,Uzbekistan DF2
+Uzbekistan,Uzbekistan DF3
+Uzbekistan,Uzbekistan DF4
+Uzbekistan,Uzbekistan MF1
+Uzbekistan,Uzbekistan MF2
+Uzbekistan,Uzbekistan MF3
+Uzbekistan,Uzbekistan FW1
+Uzbekistan,Uzbekistan FW2
+Uzbekistan,Uzbekistan FW3
+Croatia,Croatia GK
+Croatia,Croatia DF1
+Croatia,Croatia DF2
+Croatia,Croatia DF3
+Croatia,Croatia DF4
+Croatia,Croatia MF1
+Croatia,Croatia MF2
+Croatia,Croatia MF3
+Croatia,Croatia FW1
+Croatia,Croatia FW2
+Croatia,Croatia FW3
+England,England GK
+England,England DF1
+England,England DF2
+England,England DF3
+England,England DF4
+England,England MF1
+England,England MF2
+England,England MF3
+England,England FW1
+England,England FW2
+England,England FW3
+Ghana,Ghana GK
+Ghana,Ghana DF1
+Ghana,Ghana DF2
+Ghana,Ghana DF3
+Ghana,Ghana DF4
+Ghana,Ghana MF1
+Ghana,Ghana MF2
+Ghana,Ghana MF3
+Ghana,Ghana FW1
+Ghana,Ghana FW2
+Ghana,Ghana FW3
+Panama,Panama GK
+Panama,Panama DF1
+Panama,Panama DF2
+Panama,Panama DF3
+Panama,Panama DF4
+Panama,Panama MF1
+Panama,Panama MF2
+Panama,Panama MF3
+Panama,Panama FW1
+Panama,Panama FW2
+Panama,Panama FW3

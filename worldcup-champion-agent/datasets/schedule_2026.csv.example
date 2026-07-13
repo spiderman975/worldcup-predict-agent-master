@@ -1,0 +1,4 @@
+match_id,stage,home_team,away_team,home_score,away_score,is_real,played_at
+s1_Brazil_Argentina,1,Brazil,Argentina,-1,-1,false,
+s2_Brazil_Argentina,2,Brazil,Argentina,2,1,true,2026-06-20T20:00:00Z
+

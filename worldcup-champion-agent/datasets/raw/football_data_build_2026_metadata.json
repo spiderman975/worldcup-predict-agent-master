@@ -1,0 +1,13 @@
+{
+  "generated_at_utc": "2026-07-11T19:30:24.820727+00:00",
+  "source_mode": "raw-file",
+  "teams_raw": "datasets\\raw\\football_data_teams_2026.json",
+  "matches_raw": "datasets\\raw\\football_data_matches_2026.json",
+  "output_teams": "datasets\\teams_2026.csv",
+  "output_schedule": "datasets\\schedule_2026.csv",
+  "aliases": "datasets/team_aliases.csv",
+  "rebuild_dependent_scaffolds": true,
+  "skipped_matches_missing_teams": 3,
+  "wrote_csv": true,
+  "validation_errors": []
+}

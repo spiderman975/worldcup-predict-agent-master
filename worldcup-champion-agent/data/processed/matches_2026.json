@@ -1,0 +1,218 @@
+[
+  {
+    "match_id": "A1",
+    "stage": "group",
+    "group": "A",
+    "home_team_id": "BRA",
+    "away_team_id": "MEX",
+    "match_time": "2026-06-11T20:00:00",
+    "venue": "Demo Stadium"
+  },
+  {
+    "match_id": "A2",
+    "stage": "group",
+    "group": "A",
+    "home_team_id": "BRA",
+    "away_team_id": "CRO",
+    "match_time": "2026-06-12T20:00:00",
+    "venue": "Demo Stadium"
+  },
+  {
+    "match_id": "A3",
+    "stage": "group",
+    "group": "A",
+    "home_team_id": "BRA",
+    "away_team_id": "JPN",
+    "match_time": "2026-06-13T20:00:00",
+    "venue": "Demo Stadium"
+  },
+  {
+    "match_id": "A4",
+    "stage": "group",
+    "group": "A",
+    "home_team_id": "MEX",
+    "away_team_id": "CRO",
+    "match_time": "2026-06-14T20:00:00",
+    "venue": "Demo Stadium"
+  },
+  {
+    "match_id": "A5",
+    "stage": "group",
+    "group": "A",
+    "home_team_id": "MEX",
+    "away_team_id": "JPN",
+    "match_time": "2026-06-15T20:00:00",
+    "venue": "Demo Stadium"
+  },
+  {
+    "match_id": "A6",
+    "stage": "group",
+    "group": "A",
+    "home_team_id": "CRO",
+    "away_team_id": "JPN",
+    "match_time": "2026-06-16T20:00:00",
+    "venue": "Demo Stadium"
+  },
+  {
+    "match_id": "B1",
+    "stage": "group",
+    "group": "B",
+    "home_team_id": "ARG",
+    "away_team_id": "USA",
+    "match_time": "2026-06-17T20:00:00",
+    "venue": "Demo Stadium"
+  },
+  {
+    "match_id": "B2",
+    "stage": "group",
+    "group": "B",
+    "home_team_id": "ARG",
+    "away_team_id": "BEL",
+    "match_time": "2026-06-18T20:00:00",
+    "venue": "Demo Stadium"
+  },
+  {
+    "match_id": "B3",
+    "stage": "group",
+    "group": "B",
+    "home_team_id": "ARG",
+    "away_team_id": "KOR",
+    "match_time": "2026-06-19T20:00:00",
+    "venue": "Demo Stadium"
+  },
+  {
+    "match_id": "B4",
+    "stage": "group",
+    "group": "B",
+    "home_team_id": "USA",
+    "away_team_id": "BEL",
+    "match_time": "2026-06-20T20:00:00",
+    "venue": "Demo Stadium"
+  },
+  {
+    "match_id": "B5",
+    "stage": "group",
+    "group": "B",
+    "home_team_id": "USA",
+    "away_team_id": "KOR",
+    "match_time": "2026-06-21T20:00:00",
+    "venue": "Demo Stadium"
+  },
+  {
+    "match_id": "B6",
+    "stage": "group",
+    "group": "B",
+    "home_team_id": "BEL",
+    "away_team_id": "KOR",
+    "match_time": "2026-06-22T20:00:00",
+    "venue": "Demo Stadium"
+  },
+  {
+    "match_id": "C1",
+    "stage": "group",
+    "group": "C",
+    "home_team_id": "FRA",
+    "away_team_id": "GER",
+    "match_time": "2026-06-23T20:00:00",
+    "venue": "Demo Stadium"
+  },
+  {
+    "match_id": "C2",
+    "stage": "group",
+    "group": "C",
+    "home_team_id": "FRA",
+    "away_team_id": "URU",
+    "match_time": "2026-06-24T20:00:00",
+    "venue": "Demo Stadium"
+  },
+  {
+    "match_id": "C3",
+    "stage": "group",
+    "group": "C",
+    "home_team_id": "FRA",
+    "away_team_id": "MAR",
+    "match_time": "2026-06-25T20:00:00",
+    "venue": "Demo Stadium"
+  },
+  {
+    "match_id": "C4",
+    "stage": "group",
+    "group": "C",
+    "home_team_id": "GER",
+    "away_team_id": "URU",
+    "match_time": "2026-06-26T20:00:00",
+    "venue": "Demo Stadium"
+  },
+  {
+    "match_id": "C5",
+    "stage": "group",
+    "group": "C",
+    "home_team_id": "GER",
+    "away_team_id": "MAR",
+    "match_time": "2026-06-27T20:00:00",
+    "venue": "Demo Stadium"
+  },
+  {
+    "match_id": "C6",
+    "stage": "group",
+    "group": "C",
+    "home_team_id": "URU",
+    "away_team_id": "MAR",
+    "match_time": "2026-06-28T20:00:00",
+    "venue": "Demo Stadium"
+  },
+  {
+    "match_id": "D1",
+    "stage": "group",
+    "group": "D",
+    "home_team_id": "ENG",
+    "away_team_id": "ESP",
+    "match_time": "2026-06-29T20:00:00",
+    "venue": "Demo Stadium"
+  },
+  {
+    "match_id": "D2",
+    "stage": "group",
+    "group": "D",
+    "home_team_id": "ENG",
+    "away_team_id": "POR",
+    "match_time": "2026-06-30T20:00:00",
+    "venue": "Demo Stadium"
+  },
+  {
+    "match_id": "D3",
+    "stage": "group",
+    "group": "D",
+    "home_team_id": "ENG",
+    "away_team_id": "NED",
+    "match_time": "2026-06-31T20:00:00",
+    "venue": "Demo Stadium"
+  },
+  {
+    "match_id": "D4",
+    "stage": "group",
+    "group": "D",
+    "home_team_id": "ESP",
+    "away_team_id": "POR",
+    "match_time": "2026-06-32T20:00:00",
+    "venue": "Demo Stadium"
+  },
+  {
+    "match_id": "D5",
+    "stage": "group",
+    "group": "D",
+    "home_team_id": "ESP",
+    "away_team_id": "NED",
+    "match_time": "2026-06-33T20:00:00",
+    "venue": "Demo Stadium"
+  },
+  {
+    "match_id": "D6",
+    "stage": "group",
+    "group": "D",
+    "home_team_id": "POR",
+    "away_team_id": "NED",
+    "match_time": "2026-06-34T20:00:00",
+    "venue": "Demo Stadium"
+  }
+]

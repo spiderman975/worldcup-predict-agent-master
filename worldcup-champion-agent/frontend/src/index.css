@@ -1,0 +1,413 @@
+:root {
+  color: #172033;
+  background: #edf3f8;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: #edf3f8;
+}
+
+button {
+  font: inherit;
+}
+
+.appShell {
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+}
+
+.globalWorldcupBg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(120deg, rgba(37, 99, 235, 0.12), transparent 34%),
+    linear-gradient(220deg, rgba(34, 197, 94, 0.12), transparent 30%),
+    #edf3f8;
+}
+
+.sideNav {
+  position: relative;
+  z-index: 1;
+  background: #132238 !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.brandBlock {
+  height: 92px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 22px;
+  color: #fff;
+}
+
+.brandBlock strong {
+  font-size: 18px;
+}
+
+.brandBlock span {
+  color: #b8c4d6;
+  font-size: 12px;
+}
+
+.contentShell {
+  position: relative;
+  z-index: 1;
+  padding: 28px;
+  overflow: auto;
+}
+
+.pageStack {
+  max-width: 1180px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.pageTitle h1 {
+  margin: 0;
+  font-size: 30px;
+  color: #102033;
+}
+
+.pageTitle p {
+  margin: 8px 0 0;
+  color: #56657a;
+  max-width: 780px;
+}
+
+.homeHero {
+  min-height: 360px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 28px;
+  align-items: end;
+  padding: 42px;
+  border-radius: 8px;
+  color: #fff;
+  background:
+    linear-gradient(90deg, rgba(7, 18, 34, 0.88), rgba(7, 18, 34, 0.36)),
+    url("https://images.unsplash.com/photo-1522778119026-d647f0596c20?auto=format&fit=crop&w=1600&q=80");
+  background-size: cover;
+  background-position: center;
+}
+
+.homeHero h1 {
+  margin: 18px 0 12px;
+  font-size: 48px;
+  line-height: 1.08;
+  letter-spacing: 0;
+}
+
+.homeHero p {
+  margin: 0;
+  max-width: 660px;
+  color: #d8e4f0;
+  font-size: 16px;
+  line-height: 1.8;
+}
+
+.newsRail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.newsCard {
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
+  backdrop-filter: blur(8px);
+}
+
+.videoBand {
+  min-height: 220px;
+  border-radius: 8px;
+  background: #ffffffcc;
+  border: 1px solid #dbe4ef;
+  display: grid;
+  place-items: center;
+}
+
+.videoMock {
+  width: min(720px, 88%);
+  aspect-ratio: 16 / 7;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  color: #e9f2ff;
+  font-weight: 700;
+  background: linear-gradient(135deg, #0f253f, #1f7a5a);
+  position: relative;
+  overflow: hidden;
+}
+
+.videoPulse {
+  width: 78px;
+  height: 78px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.8);
+  position: absolute;
+}
+
+.calendarGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 14px;
+}
+
+.dateTile,
+.teamCard {
+  border: 1px solid #dbe4ef;
+  background: #fff;
+  border-radius: 8px;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dateTile {
+  min-height: 132px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.dateTile:hover,
+.teamCard:hover {
+  transform: translateY(-2px);
+  border-color: #2563eb;
+  box-shadow: 0 10px 24px rgba(20, 42, 73, 0.12);
+}
+
+.dateTile span {
+  color: #506073;
+}
+
+.dateTile strong {
+  color: #12233a;
+  font-size: 24px;
+}
+
+.dateTile small {
+  color: #64748b;
+}
+
+.dateTile--finished {
+  border-color: #22c55e;
+  background: #effcf4;
+}
+
+.matchList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.matchRow {
+  min-height: 112px;
+  padding: 18px;
+  border: 1px solid #dbe4ef;
+  border-radius: 8px;
+  background: #fff;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 14px;
+  align-items: center;
+}
+
+.matchMeta {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.teamsLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  font-size: 22px;
+  color: #102033;
+}
+
+.teamsLine span {
+  color: #728197;
+  font-size: 15px;
+}
+
+.predictionSummary h3 {
+  margin: 0 0 12px;
+}
+
+.scoreLine {
+  font-size: 44px;
+  font-weight: 800;
+  color: #2563eb;
+}
+
+.probGrid {
+  display: grid;
+  gap: 10px;
+}
+
+.teamGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 14px;
+}
+
+.teamCard {
+  min-height: 150px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.teamCard span,
+.teamCard small {
+  color: #64748b;
+}
+
+.teamCard strong {
+  color: #102033;
+  font-size: 22px;
+}
+
+.detailPanel {
+  padding: 22px;
+  border-radius: 8px;
+  border: 1px solid #dbe4ef;
+  background: #fff;
+  display: grid;
+  gap: 18px;
+}
+
+.chatFloatBtn {
+  position: fixed;
+  right: 28px;
+  bottom: 28px;
+  z-index: 10;
+  width: 54px !important;
+  height: 54px !important;
+  box-shadow: 0 12px 28px rgba(37, 99, 235, 0.35);
+}
+
+.chatMessages {
+  flex: 1;
+  padding: 18px;
+  overflow: auto;
+  background: #f5f8fc;
+}
+
+.chatEmpty {
+  color: #475569;
+  line-height: 1.7;
+}
+
+.chatBubble {
+  margin-bottom: 14px;
+}
+
+.chatBubble--user {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.chatRoleLabel {
+  margin-bottom: 5px;
+  color: #64748b;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.chatContent {
+  max-width: 88%;
+  white-space: pre-wrap;
+  line-height: 1.7;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid #dbe4ef;
+}
+
+.chatBubble--user .chatContent {
+  color: #fff;
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+.chatSystemMsg {
+  font-size: 13px;
+  color: #64748b;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.chatThinking {
+  margin-left: 8px;
+  color: #64748b;
+}
+
+.chatQuickActions,
+.chatInputArea {
+  padding: 12px 14px;
+  border-top: 1px solid #e2e8f0;
+  background: #fff;
+}
+
+.chatInputHint {
+  margin-bottom: 8px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+@media (max-width: 900px) {
+  .sideNav {
+    display: none;
+  }
+
+  .contentShell {
+    padding: 18px;
+  }
+
+  .homeHero {
+    grid-template-columns: 1fr;
+    padding: 26px;
+  }
+
+  .homeHero h1 {
+    font-size: 34px;
+  }
+
+  .matchRow {
+    grid-template-columns: 1fr;
+  }
+}

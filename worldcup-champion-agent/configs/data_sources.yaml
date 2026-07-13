@@ -1,0 +1,10 @@
+local:
+  teams: data/processed/teams.json
+  matches: data/processed/matches_2026.json
+  features: data/processed/team_features.json
+future_sources:
+  - football-data.co.uk
+  - Kaggle
+  - Wikipedia
+  - FIFA rankings
+  - web search

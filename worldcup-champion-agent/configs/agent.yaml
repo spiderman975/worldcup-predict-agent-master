@@ -1,0 +1,8 @@
+agent:
+  mode: single_agent_multi_tool
+  tool_whitelist:
+    - football_query.get_all_teams
+    - football_query.get_matches
+    - match_analyze.predict_match
+    - tournament_analyze.simulate_tournament
+  fallback_reasoning: local_template

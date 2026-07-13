@@ -1,0 +1,12 @@
+rating_weights:
+  normalized_elo: 0.30
+  inverse_fifa_rank: 0.20
+  recent_form: 0.20
+  attack_defense_balance: 0.15
+  worldcup_history_score: 0.10
+  squad_availability_score: 0.05
+match_model:
+  type: poisson
+  max_goals: 5
+simulation:
+  default_monte_carlo_runs: 1000
