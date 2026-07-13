@@ -2,7 +2,6 @@ backend/.venv/
 backend/.pytest_cache/
 backend/__pycache__/
 backend/app/**/__pycache__/
-backend/worldcup_agent.db
 backend/.local_vector_store/
 frontend/node_modules/
 frontend/dist/

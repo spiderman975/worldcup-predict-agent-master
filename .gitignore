@@ -20,15 +20,12 @@ node_modules/
 dist/
 build/
 
-# ===== 数据库文件（可用种子脚本重建；临时文件必须忽略）=====
-*.db
+# ===== 数据库临时文件（WAL 运行时文件，必须忽略）=====
+# 说明：主数据库 *.db / *.sqlite 会正常提交，仅忽略下面的临时文件
 *.db-shm
 *.db-wal
-*.sqlite
-*.sqlite3
 
 # ===== 数据快照 / 备份 =====
-**/data/backups/
 **/data/snapshots/*.json
 **/.local_vector_store/
 **/vector_store/
