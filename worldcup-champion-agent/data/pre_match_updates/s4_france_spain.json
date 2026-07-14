@@ -1,0 +1,110 @@
+{
+  "match_id": "s4_france_spain",
+  "match": {
+    "match_id": "s4_france_spain",
+    "stage": "round_of_32",
+    "stage_number": 4,
+    "group": null,
+    "home_team_id": "FRANCE",
+    "away_team_id": "SPAIN",
+    "home_team_name": "France",
+    "away_team_name": "Spain",
+    "match_time_raw": "2026-07-14T19:00:00Z",
+    "match_time": "2026-07-15T03:00:00",
+    "match_date": "2026-07-15",
+    "venue": "TBD",
+    "status": "scheduled",
+    "actual_home_score": null,
+    "actual_away_score": null,
+    "is_database_match": true
+  },
+  "query": "France Spain lineup injuries news 2026-07-15",
+  "refreshed_at": "2026-07-15T02:32:36.698651+08:00",
+  "include_web": true,
+  "result": {
+    "query": "France Spain lineup injuries news 2026-07-15",
+    "database": [
+      {
+        "title": "比赛：s4_france_spain",
+        "summary": "France vs Spain，阶段 4，未赛，比分 -1--1。",
+        "source": "SQLite matches",
+        "url": "local://matches/s4_france_spain",
+        "score": 2.0,
+        "kind": "database"
+      },
+      {
+        "title": "球队：Spain",
+        "summary": "Spain 位于 H 组，FIFA 排名 3，团队进攻系数 1.0，防守系数 1.0，近期势头 0。",
+        "source": "SQLite teams",
+        "url": "local://teams/Spain",
+        "score": 1.0,
+        "kind": "database"
+      },
+      {
+        "title": "球队：France",
+        "summary": "France 位于 I 组，FIFA 排名 2，团队进攻系数 1.0，防守系数 1.0，近期势头 0。",
+        "source": "SQLite teams",
+        "url": "local://teams/France",
+        "score": 1.0,
+        "kind": "database"
+      },
+      {
+        "title": "球员：Unai Simon",
+        "summary": "Unai Simon 属于 Spain，进攻 36.0，防守 93.0。",
+        "source": "SQLite members",
+        "url": "local://members/Spain/Unai Simon",
+        "score": 1.0,
+        "kind": "database"
+      },
+      {
+        "title": "球员：Dani Carvajal",
+        "summary": "Dani Carvajal 属于 Spain，进攻 56.0，防守 88.0。",
+        "source": "SQLite members",
+        "url": "local://members/Spain/Dani Carvajal",
+        "score": 1.0,
+        "kind": "database"
+      },
+      {
+        "title": "球员：Robin Le Normand",
+        "summary": "Robin Le Normand 属于 Spain，进攻 56.0，防守 88.0。",
+        "source": "SQLite members",
+        "url": "local://members/Spain/Robin Le Normand",
+        "score": 1.0,
+        "kind": "database"
+      },
+      {
+        "title": "球员：Aymeric Laporte",
+        "summary": "Aymeric Laporte 属于 Spain，进攻 56.0，防守 88.0。",
+        "source": "SQLite members",
+        "url": "local://members/Spain/Aymeric Laporte",
+        "score": 1.0,
+        "kind": "database"
+      },
+      {
+        "title": "球员：Alejandro Balde",
+        "summary": "Alejandro Balde 属于 Spain，进攻 56.0，防守 88.0。",
+        "source": "SQLite members",
+        "url": "local://members/Spain/Alejandro Balde",
+        "score": 1.0,
+        "kind": "database"
+      },
+      {
+        "title": "球员：Rodri",
+        "summary": "Rodri 属于 Spain，进攻 78.0，防守 76.0。",
+        "source": "SQLite members",
+        "url": "local://members/Spain/Rodri",
+        "score": 1.0,
+        "kind": "database"
+      },
+      {
+        "title": "球员：Pedri",
+        "summary": "Pedri 属于 Spain，进攻 78.0，防守 76.0。",
+        "source": "SQLite members",
+        "url": "local://members/Spain/Pedri",
+        "score": 1.0,
+        "kind": "database"
+      }
+    ],
+    "web": []
+  }
+}

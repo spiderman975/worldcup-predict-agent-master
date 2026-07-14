@@ -55,6 +55,8 @@ export function PredictionPage() {
           shape="circle"
           size="large"
           icon={<MessageOutlined />}
+          aria-label="打开 Agent 对话"
+          title="Agent 对话"
           onClick={() => setChatVisible(true)}
         />
       )}

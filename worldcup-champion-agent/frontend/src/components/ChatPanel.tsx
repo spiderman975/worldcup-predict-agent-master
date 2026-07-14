@@ -37,6 +37,7 @@ export function ChatPanel({ visible, onClose }: ChatPanelProps) {
   const [initializing, setInitializing] = useState(false);
   const [sessionError, setSessionError] = useState<string | null>(null);
   const [streaming, setStreaming] = useState(false);
+  const [thinkingText, setThinkingText] = useState("Agent 正在思考...");
   const endRef = useRef<HTMLDivElement>(null);
   const sourceRef = useRef<EventSource | null>(null);
   const connectedRunRef = useRef<string | null>(null);
@@ -53,7 +54,12 @@ export function ChatPanel({ visible, onClose }: ChatPanelProps) {
         (event, data) => {
           if (event === "user_message" || event === "agent_message" || event === "system_message") {
             setMessages((prev) => [...prev, data as unknown as ChatMessage]);
-            setStreaming(false);
+            if (event !== "user_message") setStreaming(false);
+            return;
+          }
+          if (event === "agent_status") {
+            setThinkingText(String(data.message ?? "Agent 正在思考..."));
+            setStreaming(true);
             return;
           }
           if (event === "agent_token") {
@@ -93,6 +99,7 @@ export function ChatPanel({ visible, onClose }: ChatPanelProps) {
               ];
             });
             setStreaming(false);
+            setThinkingText("Agent 正在思考...");
             return;
           }
           if (event === "agent_error") {
@@ -162,17 +169,19 @@ export function ChatPanel({ visible, onClose }: ChatPanelProps) {
       setSessionId(null);
       setSessionError(null);
       setInitializing(false);
+      setStreaming(false);
     }
   }, [visible]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, streaming]);
 
   const handleSend = useCallback(async () => {
     if (!inputValue.trim() || !sessionId || streaming || initializing) return;
     const text = inputValue.trim();
     setInputValue("");
+    setThinkingText("Agent 正在接收问题...");
     setStreaming(true);
     try {
       await sendChatMessage(sessionId, text);
@@ -184,6 +193,7 @@ export function ChatPanel({ visible, onClose }: ChatPanelProps) {
 
   const handleStartPrediction = useCallback(async () => {
     if (!sessionId || streaming || initializing) return;
+    setThinkingText("Agent 正在启动预测工作流...");
     setStreaming(true);
     try {
       await startChatPrediction(sessionId, 1000);
@@ -217,13 +227,17 @@ export function ChatPanel({ visible, onClose }: ChatPanelProps) {
         {messages.length === 0 && (
           <div className="chatEmpty">
             <p>我是世界杯预测主 Agent，可以查赛程、球队、已保存预测，也可以触发单场预测工作流。</p>
-            <p>试试：预测 A1 比分、A1 为什么这么预测、Brazil vs Mexico 谁赢。</p>
+            <p>试试：今天比赛安排、预测 s4_france_spain 比分、France vs Spain 谁赢。</p>
             {sessionError && (
               <Alert
                 type="error"
                 showIcon
                 message={sessionError}
-                action={<Button size="small" type="primary" onClick={openSession} loading={initializing}>重连</Button>}
+                action={
+                  <Button size="small" type="primary" onClick={openSession} loading={initializing}>
+                    重连
+                  </Button>
+                }
               />
             )}
           </div>
@@ -244,9 +258,9 @@ export function ChatPanel({ visible, onClose }: ChatPanelProps) {
           </div>
         ))}
         {streaming && !(messages[messages.length - 1]?.role === "agent" && !messages[messages.length - 1]?._done) && (
-          <div className="chatBubble chatBubble--agent">
+          <div className="chatBubble chatBubble--agent chatBubble--thinking">
             <Spin size="small" />
-            <span className="chatThinking">Agent 正在处理...</span>
+            <span className="chatThinking">{thinkingText}</span>
           </div>
         )}
         <div ref={endRef} />
@@ -261,7 +275,7 @@ export function ChatPanel({ visible, onClose }: ChatPanelProps) {
         {inputDisabled && !streaming && <div className="chatInputHint">正在建立 Agent 会话，连接成功后即可输入。</div>}
         <Space.Compact style={{ width: "100%" }}>
           <Input
-            placeholder="输入问题，例如：预测 A1 比分"
+            placeholder="输入问题，例如：今天比赛安排"
             value={inputValue}
             onChange={(event) => setInputValue(event.target.value)}
             onPressEnter={handleSend}

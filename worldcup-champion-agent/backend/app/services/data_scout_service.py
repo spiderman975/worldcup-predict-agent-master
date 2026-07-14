@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import logging
 import re
 import sqlite3
 import sys
@@ -15,6 +16,9 @@ from typing import Any
 import httpx
 
 from app.core.config import get_settings
+
+
+logger = logging.getLogger(__name__)
 
 
 class WorldCupDataError(RuntimeError):
@@ -52,6 +56,7 @@ class WorldCupDataScoutService:
     def __init__(self) -> None:
         self.project_root = PROJECT_ROOT
         self.search_cache: dict[str, list[dict[str, Any]]] = {}
+        self._warned_missing_key = False
 
     @property
     def db_path(self) -> Path:
@@ -197,6 +202,9 @@ class WorldCupDataScoutService:
         settings = get_settings()
         api_key = getattr(settings, "bocha_api_key", None)
         if not api_key:
+            if not self._warned_missing_key:
+                logger.warning("未配置 BOCHA_API_KEY，已跳过联网搜索功能，仅使用本地数据库检索。")
+                self._warned_missing_key = True
             return []
 
         cache_key = hashlib.md5(query.encode("utf-8")).hexdigest()
@@ -210,7 +218,8 @@ class WorldCupDataScoutService:
                 response = await client.post("https://api.bocha.cn/v1/web-search", json=payload, headers=headers)
                 response.raise_for_status()
                 data = response.json()
-        except Exception:
+        except Exception as exc:
+            logger.warning("联网搜索调用失败，已跳过本次联网搜索：%s", exc)
             return []
 
         webpages = data.get("data", {}).get("webPages", {}).get("value", [])

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -16,6 +17,35 @@ from app.services.team_analysis_service import get_team_ratings_and_odds, search
 PREDICTION_STORE = Path(__file__).resolve().parents[3] / "data" / "snapshots" / "match_predictions.json"
 BASE_MATCH_TIME = datetime(2026, 6, 11, 20, 0, 0)
 BEIJING_TZ = ZoneInfo("Asia/Shanghai")
+
+TEAM_ALIASES: dict[str, list[str]] = {
+    "FRANCE": ["france", "法国", "法兰西", "法"],
+    "SPAIN": ["spain", "西班牙", "西"],
+    "BRAZIL": ["brazil", "巴西"],
+    "ARGENTINA": ["argentina", "阿根廷"],
+    "GERMANY": ["germany", "德国"],
+    "ENGLAND": ["england", "英格兰", "英国", "英"],
+    "ITALY": ["italy", "意大利"],
+    "PORTUGAL": ["portugal", "葡萄牙"],
+    "NETHERLANDS": ["netherlands", "holland", "荷兰"],
+    "BELGIUM": ["belgium", "比利时"],
+    "MEXICO": ["mexico", "墨西哥"],
+    "URUGUAY": ["uruguay", "乌拉圭"],
+    "CROATIA": ["croatia", "克罗地亚"],
+    "NORWAY": ["norway", "挪威"],
+    "USA": ["usa", "united states", "美国"],
+}
+
+SPECIAL_MATCH_ALIASES: dict[str, tuple[str, str]] = {
+    "法西大战": ("FRANCE", "SPAIN"),
+    "西法大战": ("FRANCE", "SPAIN"),
+    "英法大战": ("ENGLAND", "FRANCE"),
+    "法英大战": ("ENGLAND", "FRANCE"),
+    "巴阿大战": ("BRAZIL", "ARGENTINA"),
+    "阿巴大战": ("BRAZIL", "ARGENTINA"),
+    "德意大战": ("GERMANY", "ITALY"),
+    "意德大战": ("GERMANY", "ITALY"),
+}
 
 
 def _team_name_map() -> dict[str, str]:
@@ -144,6 +174,152 @@ def get_saved_match_prediction(match_id: str) -> dict[str, Any] | None:
     return _load_store().get(match_id.upper())
 
 
+def _normalize_text(text: str) -> str:
+    return re.sub(r"\s+", " ", text.casefold()).strip()
+
+
+def _alias_team_hits(text: str) -> list[str]:
+    lowered = _normalize_text(text)
+    hits: list[str] = []
+    for team_id, aliases in TEAM_ALIASES.items():
+        for alias in aliases:
+            if alias.casefold() in lowered or alias in text:
+                hits.append(team_id)
+                break
+    for phrase, pair in SPECIAL_MATCH_ALIASES.items():
+        if phrase in text:
+            hits.extend(pair)
+    deduped: list[str] = []
+    for team_id in hits:
+        if team_id not in deduped:
+            deduped.append(team_id)
+    return deduped
+
+
+def _computed_status(match: dict[str, Any], now: datetime | None = None) -> str:
+    if match.get("actual_home_score") is not None and match.get("actual_away_score") is not None:
+        return "finished"
+    now = now or datetime.now(BEIJING_TZ).replace(tzinfo=None)
+    match_time = _parse_match_time(str(match.get("match_time") or match.get("match_time_raw") or ""))
+    if now >= match_time + timedelta(hours=3):
+        return "finished_unverified"
+    if match_time <= now < match_time + timedelta(hours=3):
+        return "live_or_recent"
+    return "scheduled"
+
+
+def resolve_match_query(query: str, date_hint: str | None = None) -> dict[str, Any]:
+    """Resolve natural language like '法西大战' into one or more schedule matches."""
+
+    schedule = list_schedule()
+    lowered = query.lower()
+    candidates: list[tuple[float, dict[str, Any], list[str]]] = []
+
+    for match in schedule:
+        reasons: list[str] = []
+        score = 0.0
+        if match["match_id"].lower() in lowered:
+            score += 100
+            reasons.append("命中比赛 ID")
+        if date_hint and match.get("match_date") == date_hint:
+            score += 10
+            reasons.append("命中日期")
+        haystack = " ".join(
+            [
+                match["home_team_id"],
+                match["away_team_id"],
+                match["home_team_name"],
+                match["away_team_name"],
+                match["match_date"],
+            ]
+        ).casefold()
+        for term in [part for part in re.split(r"[\s,，。:：/\\-]+", lowered) if part]:
+            if term and term in haystack:
+                score += 3
+                reasons.append(f"命中关键词 {term}")
+
+        alias_hits = _alias_team_hits(query)
+        if alias_hits:
+            pair = {match["home_team_id"].upper(), match["away_team_id"].upper()}
+            hit_set = set(alias_hits)
+            if len(hit_set & pair) == 2:
+                score += 80
+                reasons.append("命中双方球队别名")
+            elif len(hit_set & pair) == 1:
+                score += 15
+                reasons.append("命中单方球队别名")
+
+        if score > 0:
+            enriched = dict(match)
+            enriched["computed_status"] = _computed_status(match)
+            candidates.append((score, enriched, reasons))
+
+    candidates.sort(key=lambda item: item[0], reverse=True)
+    top = [
+        {
+            "confidence": min(0.99, round(score / 100, 2)),
+            "match": match,
+            "reasons": reasons,
+        }
+        for score, match, reasons in candidates[:5]
+    ]
+    if not top:
+        return {"resolved": False, "query": query, "candidates": [], "message": "未能从赛程中解析出明确比赛"}
+
+    best = top[0]
+    second_confidence = top[1]["confidence"] if len(top) > 1 else 0
+    resolved = best["confidence"] >= 0.5 and best["confidence"] - second_confidence >= 0.15
+    return {
+        "resolved": resolved,
+        "query": query,
+        "match_id": best["match"]["match_id"] if resolved else None,
+        "match": best["match"] if resolved else None,
+        "candidates": top,
+        "message": "已解析出唯一比赛" if resolved else "找到多个候选比赛，需要用户确认",
+    }
+
+
+def get_match_context(match_id: str) -> dict[str, Any]:
+    from app.services.data_scout_service import data_scout_service
+
+    match = get_match(match_id)
+    if not match:
+        return {"found": False, "match_id": match_id, "message": "未找到比赛"}
+
+    teams = data_scout_service.list_teams()
+    now = datetime.now(BEIJING_TZ).replace(tzinfo=None)
+    computed_status = _computed_status(match, now)
+    database_status = str(match.get("status") or "")
+    warnings: list[str] = []
+    has_score = match.get("actual_home_score") is not None and match.get("actual_away_score") is not None
+    if computed_status.startswith("finished") and not has_score:
+        warnings.append("按北京时间推算比赛应已结束，但数据库尚无真实比分")
+    if database_status == "scheduled" and computed_status.startswith("finished"):
+        warnings.append("数据库状态仍为 scheduled，但当前时间已超过比赛开赛 3 小时")
+    if database_status == "finished" and not has_score:
+        warnings.append("数据库标记已完赛，但真实比分字段为空")
+
+    return {
+        "found": True,
+        "current_time_beijing": now.isoformat(),
+        "match": match,
+        "computed_status": computed_status,
+        "database_status": database_status,
+        "actual_score": {
+            "home": match.get("actual_home_score"),
+            "away": match.get("actual_away_score"),
+            "has_score": has_score,
+        },
+        "teams": data_scout_service.match_context(match, teams),
+        "saved_prediction": get_saved_match_prediction(match_id),
+        "data_quality": {
+            "has_score": has_score,
+            "status_consistent": not warnings,
+            "warnings": warnings,
+        },
+    }
+
+
 async def predict_single_match(match_id: str, *, realtime: bool = False, allow_draw: bool | None = None) -> dict[str, Any]:
     match = get_match(match_id)
     if not match:
@@ -183,6 +359,10 @@ def find_match_from_text(text: str) -> dict[str, Any] | None:
     for match in list_schedule():
         if match["match_id"].lower() in lowered:
             return match
+
+    resolved = resolve_match_query(text)
+    if resolved.get("resolved") and resolved.get("match"):
+        return resolved["match"]
 
     team_hits = search_teams(text)
     ids = [str(item.get("team_id", "")).upper() for item in team_hits if item.get("team_id")]

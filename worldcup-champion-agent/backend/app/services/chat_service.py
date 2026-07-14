@@ -273,7 +273,17 @@ async def send_message(session_id: str, user_message: str) -> None:
 
 async def _run_chat_turn(session: ChatSession, user_message: str) -> None:
     try:
+        await session.queue.put(
+            {
+                "event": "agent_status",
+                "data": {"message": "Agent 正在分析问题...", "timestamp": _message_time()},
+            }
+        )
         intent = _classify(user_message)
+        if intent in {"single_predict", "saved_prediction"} and my_claude_runtime_service.enabled:
+            answer = await _stream_with_llm(session)
+            session.messages.append({"role": "assistant", "content": answer})
+            return
         if intent == "identity":
             answer = _answer_identity()
         elif intent == "time":
