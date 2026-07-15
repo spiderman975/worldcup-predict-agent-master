@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 
 from app.services.cache_service import cache_service
 from app.services.data_scout_service import data_scout_service
+from app.services.team_analysis_service import get_team_ratings_and_odds
 
 router = APIRouter(prefix="/api/teams", tags=["teams"])
 
@@ -25,8 +26,14 @@ def get_team(team_id: str) -> dict:
     team = cache_service.remember(
         cache_service.key("teams", "detail", normalized_id),
         cache_service.settings.cache_teams_ttl_seconds,
-        lambda: next((item for item in data_scout_service.list_teams() if item["team_id"] == normalized_id), None),
+        lambda: data_scout_service.team_detail_by_id(normalized_id),
     )
     if not team:
         raise HTTPException(status_code=404, detail="球队不存在")
-    return team
+
+    ratings = cache_service.remember(
+        cache_service.key("teams", "ratings"),
+        cache_service.settings.cache_ratings_ttl_seconds,
+        get_team_ratings_and_odds,
+    )
+    return {**team, "rating": (ratings.get("team_ratings") or {}).get(normalized_id)}

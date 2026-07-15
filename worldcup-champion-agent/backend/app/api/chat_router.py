@@ -25,7 +25,7 @@ async def new_session(_: ChatSessionCreate | None = None) -> dict[str, str]:
 async def chat_message(session_id: str, payload: ChatMessageRequest) -> dict[str, str]:
     if not get_session(session_id):
         raise HTTPException(status_code=404, detail="Chat session does not exist")
-    await send_message(session_id, payload.message)
+    await send_message(session_id, payload.message, force_web_search=payload.force_web_search)
     return {"status": "ok"}
 
 

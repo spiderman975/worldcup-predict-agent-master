@@ -19,8 +19,10 @@ import {
   getMatches,
   getRatings,
   getSchedule,
+  getTeamDetail,
   getTeams,
-  predictMatch,
+  connectMatchPredictionStream,
+  startMatchPrediction,
 } from "./api/predictionApi";
 import { ChatPanel } from "./components/ChatPanel";
 
@@ -33,6 +35,30 @@ type Team = {
   defense_score: number;
   recent_form: number;
   elo_rating: number;
+  squad_availability_score?: number;
+};
+
+type TeamPlayer = {
+  name: string;
+  attack: number;
+  defense: number;
+  overall: number;
+  injured: boolean;
+  injury_description?: string;
+  is_starter?: boolean;
+};
+
+type TeamDetail = Team & {
+  rating?: Rating;
+  starting_lineup?: string[];
+  injured_players?: TeamPlayer[];
+  players?: TeamPlayer[];
+  database?: {
+    members_count?: number;
+    computed_attack?: number;
+    computed_defensive?: number;
+    streak?: number;
+  };
 };
 
 type Match = {
@@ -58,9 +84,17 @@ type Rating = {
   overall_rating: number;
   attack_strength: number;
   defense_strength: number;
+  explanation_factors?: string[];
 };
 
 const QUIET_REFRESH_MS = 3 * 60 * 1000;
+
+type ProgressItem = {
+  event: string;
+  message: string;
+  phase?: string;
+  status?: string;
+};
 
 function formatDate(value: string) {
   const date = new Date(value);
@@ -77,11 +111,12 @@ function formatTime(value: string) {
 function stageLabel(stage: string, stageNumber?: number) {
   const labels: Record<string, string> = {
     group: "小组赛",
-    round_of_32: "32 强",
-    round_of_16: "16 强",
-    quarter: "四分之一决赛",
+    round_of_32: "1/16决赛（32强）",
+    round_of_16: "1/8决赛（16强）",
+    quarter: "1/4决赛",
     semi: "半决赛",
     final: "决赛",
+    third_place: "三四名决赛",
   };
   return labels[stage] ?? (stageNumber ? `第 ${stageNumber} 阶段` : stage);
 }
@@ -229,6 +264,7 @@ function MatchDayPage() {
   const [loading, setLoading] = useState(!cachedMatches);
   const [predicting, setPredicting] = useState<string | null>(null);
   const [prediction, setPrediction] = useState<any | null>(null);
+  const [progressItems, setProgressItems] = useState<Record<string, ProgressItem[]>>({});
 
   useEffect(() => {
     const cached = getCachedMatches();
@@ -248,10 +284,59 @@ function MatchDayPage() {
 
   const handlePredict = async (matchId: string) => {
     setPredicting(matchId);
+    setProgressItems((prev) => ({
+      ...prev,
+      [matchId]: [{ event: "prediction_start", message: "正在启动单场预测工作流...", status: "running" }],
+    }));
     try {
-      setPrediction(await predictMatch(matchId));
+      const { run_id } = await startMatchPrediction(matchId);
+      const source = connectMatchPredictionStream(
+        run_id,
+        (event, payload) => {
+          const message = String(payload.message ?? payload.data?.message ?? event);
+          if (event === "agent_progress" || event === "agent_node" || event === "data_scout_update" || event === "prediction_start") {
+            setProgressItems((prev) => ({
+              ...prev,
+              [matchId]: [
+                ...(prev[matchId] ?? []),
+                {
+                  event,
+                  message,
+                  phase: String(payload.phase ?? payload.data?.phase ?? ""),
+                  status: String(payload.data?.status ?? (event === "prediction_start" ? "running" : "completed")),
+                },
+              ],
+            }));
+          }
+          if (event === "prediction_complete") {
+            setPrediction(payload.data?.record ?? null);
+            setProgressItems((prev) => ({
+              ...prev,
+              [matchId]: [...(prev[matchId] ?? []), { event, message: "预测完成", status: "completed" }],
+            }));
+            setPredicting(null);
+            source.close();
+          }
+          if (event === "prediction_error") {
+            setProgressItems((prev) => ({
+              ...prev,
+              [matchId]: [...(prev[matchId] ?? []), { event, message, status: "failed" }],
+            }));
+            setPredicting(null);
+            source.close();
+          }
+        },
+        () => {
+          setProgressItems((prev) => ({
+            ...prev,
+            [matchId]: [...(prev[matchId] ?? []), { event: "prediction_error", message: "预测事件流连接异常", status: "failed" }],
+          }));
+          setPredicting(null);
+          source.close();
+        },
+      );
     } finally {
-      setPredicting(null);
+      // The SSE terminal event will clear predicting.
     }
   };
 
@@ -281,6 +366,17 @@ function MatchDayPage() {
                 预测比赛结果
               </Button>
             )}
+            {progressItems[match.match_id]?.length > 0 && (
+              <div className="inlineProgress">
+                <strong>推理流程</strong>
+                {progressItems[match.match_id].slice(-8).map((item, index) => (
+                  <div className={`progressStep progressStep--${item.status ?? "running"}`} key={`${item.event}-${index}`}>
+                    <span />
+                    <p>{item.message}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -293,11 +389,23 @@ function MatchDayPage() {
 
 function PredictionSummary({ record }: { record: any }) {
   const pred = record.prediction;
+  const analysis = String(record.analysis ?? pred.explanation ?? record.explanation?.text ?? "暂无原因分析。");
   return (
     <div className="predictionSummary">
       <h3>{record.match.home_team_name} vs {record.match.away_team_name}</h3>
       <div className="scoreLine">{pred.predicted_home_score} - {pred.predicted_away_score}</div>
-      <p>{pred.explanation}</p>
+      <div className="predictionAnalysis">
+        {analysis.split(/\n{2,}/).map((block, index) => {
+          const lines = block.split("\n").filter(Boolean);
+          const [title, ...body] = lines;
+          return (
+            <section key={`${title}-${index}`}>
+              {body.length > 0 ? <h4>{title}</h4> : null}
+              {(body.length > 0 ? body : [title]).map((line) => <p key={line}>{line}</p>)}
+            </section>
+          );
+        })}
+      </div>
       <div className="probGrid">
         <Progress percent={Math.round(pred.home_win_prob * 100)} size="small" format={(v) => `主胜 ${v}%`} />
         <Progress percent={Math.round(pred.draw_prob * 100)} size="small" format={(v) => `平局 ${v}%`} />
@@ -348,22 +456,104 @@ function TeamDetailPage() {
   const { teamId } = useParams();
   const cachedTeams = getCachedTeams();
   const [teams, setTeams] = useState<Team[]>(cachedTeams ?? []);
+  const [detail, setDetail] = useState<TeamDetail | null>(null);
+  const [loadingDetail, setLoadingDetail] = useState(true);
   const team = useMemo(() => teams.find((item) => item.team_id === teamId), [teams, teamId]);
 
   useEffect(() => {
     getTeams().then(setTeams);
   }, []);
 
-  if (!team) return <LoadingState text="正在加载球队信息..." />;
+  useEffect(() => {
+    if (!teamId) return;
+    setLoadingDetail(true);
+    getTeamDetail(teamId)
+      .then(setDetail)
+      .finally(() => setLoadingDetail(false));
+  }, [teamId]);
+
+  const currentTeam = detail ?? team;
+  if (!currentTeam) return <LoadingState text="正在加载球队信息..." />;
+  const rating = detail?.rating;
+  const players = detail?.players ?? [];
+  const starters = players.filter((player) => player.is_starter);
+  const substitutes = players.filter((player) => !player.is_starter);
+
   return (
     <div className="pageStack">
-      <PageTitle title={team.name} sub={`${team.group} 组，FIFA 排名 ${team.fifa_rank}`} />
+      <PageTitle title={currentTeam.name} sub={`${currentTeam.group} 组，FIFA 排名 ${currentTeam.fifa_rank}`} />
       <div className="detailPanel">
-        <Progress percent={Math.round(team.attack_score * 100)} format={(v) => `进攻 ${v}%`} />
-        <Progress percent={Math.round(team.defense_score * 100)} format={(v) => `防守 ${v}%`} />
-        <Progress percent={Math.round(team.recent_form * 100)} format={(v) => `状态 ${v}%`} />
-        <Empty description="数据库阵容和伤病信息已接入，可通过右下角 Chat Agent 查询具体球队报告。" />
+        <div className="teamDetailStats">
+          <div>
+            <strong>{rating ? Math.round(rating.overall_rating * 100) : Math.round(((currentTeam.attack_score + currentTeam.defense_score) / 2) * 100)}</strong>
+            <span>综合评分</span>
+          </div>
+          <div>
+            <strong>{currentTeam.elo_rating}</strong>
+            <span>Elo 估计</span>
+          </div>
+          <div>
+            <strong>{detail?.database?.members_count ?? (players.length || "-")}</strong>
+            <span>球员数量</span>
+          </div>
+          <div>
+            <strong>{players.filter((player) => player.injured).length}</strong>
+            <span>伤病人数</span>
+          </div>
+        </div>
+        <Progress percent={Math.round(currentTeam.attack_score * 100)} format={(v) => `进攻 ${v}%`} />
+        <Progress percent={Math.round(currentTeam.defense_score * 100)} format={(v) => `防守 ${v}%`} />
+        <Progress percent={Math.round(currentTeam.recent_form * 100)} format={(v) => `状态 ${v}%`} />
+        <Progress percent={Math.round((currentTeam.squad_availability_score ?? 1) * 100)} format={(v) => `阵容可用性 ${v}%`} />
+        {rating?.explanation_factors?.length ? (
+          <div className="factorList">
+            {rating.explanation_factors.map((factor: string) => <Tag key={factor}>{factor}</Tag>)}
+          </div>
+        ) : null}
       </div>
+
+      {loadingDetail && <LoadingState text="正在加载球员阵容..." />}
+      {!loadingDetail && players.length === 0 && <Empty description="暂无球员阵容数据" />}
+      {players.length > 0 && (
+        <div className="rosterLayout">
+          <section className="rosterSection">
+            <h3>预计首发阵容</h3>
+            <div className="playerGrid playerGrid--compact">
+              {(starters.length ? starters : players.slice(0, 11)).map((player) => (
+                <PlayerCard key={player.name} player={player} />
+              ))}
+            </div>
+          </section>
+          <section className="rosterSection">
+            <h3>全队球员评分</h3>
+            <div className="playerGrid">
+              {[...starters, ...substitutes].map((player) => (
+                <PlayerCard key={player.name} player={player} showStarter />
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PlayerCard({ player, showStarter = false }: { player: TeamPlayer; showStarter?: boolean }) {
+  return (
+    <div className={`playerCard ${player.injured ? "playerCard--injured" : ""}`}>
+      <div className="playerCardHeader">
+        <strong>{player.name}</strong>
+        <Space size={4}>
+          {showStarter && player.is_starter && <Tag color="blue">首发</Tag>}
+          {player.injured && <Tag color="red">伤病</Tag>}
+        </Space>
+      </div>
+      <div className="playerScores">
+        <span>综合 {Math.round(player.overall)}</span>
+        <span>进攻 {player.attack}</span>
+        <span>防守 {player.defense}</span>
+      </div>
+      {player.injured && player.injury_description && <small>{player.injury_description}</small>}
     </div>
   );
 }

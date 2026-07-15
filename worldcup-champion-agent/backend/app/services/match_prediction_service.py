@@ -7,7 +7,7 @@ import json
 import re
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, Awaitable, Callable
 from zoneinfo import ZoneInfo
 
 from app.agent.match_pipeline import MatchPredictionPipeline
@@ -73,15 +73,20 @@ def _parse_match_time(value: str | None, index: int | None = None) -> datetime:
     return BASE_MATCH_TIME + timedelta(days=index or 0)
 
 
-def _db_stage_name(stage: int) -> str:
-    if stage <= 3:
+GROUP_STAGE_MATCH_COUNT = 72
+
+
+def _db_stage_name(stage: int, stage_one_index: int | None = None) -> str:
+    if stage == 1:
+        if stage_one_index is not None and stage_one_index > GROUP_STAGE_MATCH_COUNT:
+            return "round_of_32"
         return "group"
     return {
-        4: "round_of_32",
-        5: "round_of_16",
-        6: "quarter",
-        7: "semi",
-        8: "final",
+        2: "round_of_16",
+        3: "quarter",
+        4: "semi",
+        5: "final",
+        6: "third_place",
     }.get(stage, str(stage))
 
 
@@ -100,7 +105,11 @@ def _list_database_schedule() -> list[dict[str, Any]]:
 
     ids = _team_id_by_name()
     schedule: list[dict[str, Any]] = []
+    stage_one_seen = 0
     for index, row in enumerate(rows):
+        stage_number = int(row["stage"])
+        if stage_number == 1:
+            stage_one_seen += 1
         played_at = _parse_match_time(row["played_at"], index)
         home_score = int(row["home_score"])
         away_score = int(row["away_score"])
@@ -110,8 +119,8 @@ def _list_database_schedule() -> list[dict[str, Any]]:
         schedule.append(
             {
                 "match_id": str(row["match_id"]),
-                "stage": _db_stage_name(int(row["stage"])),
-                "stage_number": int(row["stage"]),
+                "stage": _db_stage_name(stage_number, stage_one_seen if stage_number == 1 else None),
+                "stage_number": stage_number,
                 "group": None,
                 "home_team_id": ids.get(home_name.casefold(), home_name),
                 "away_team_id": ids.get(away_name.casefold(), away_name),
@@ -320,7 +329,162 @@ def get_match_context(match_id: str) -> dict[str, Any]:
     }
 
 
-async def predict_single_match(match_id: str, *, realtime: bool = False, allow_draw: bool | None = None) -> dict[str, Any]:
+ProgressEmit = Callable[[str, str, str | None, dict[str, Any] | None], Awaitable[None]]
+
+
+def _trace_item(trace: list[dict[str, Any]], agent: str) -> dict[str, Any]:
+    return next((item for item in trace if item.get("agent") == agent), {})
+
+
+def _analysis_context(
+    match: dict[str, Any],
+    prediction: dict[str, Any],
+    explanation: dict[str, Any],
+    ratings: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    home = ratings[match["home_team_id"]]
+    away = ratings[match["away_team_id"]]
+    trace = prediction.get("agent_trace") or []
+    return {
+        "match": {
+            "match_id": match["match_id"],
+            "stage": match.get("stage"),
+            "home_team_name": match["home_team_name"],
+            "away_team_name": match["away_team_name"],
+            "match_time": match.get("match_time"),
+            "status": match.get("status"),
+        },
+        "prediction": {
+            "score": f"{prediction['predicted_home_score']}-{prediction['predicted_away_score']}",
+            "winner_name": prediction.get("winner_name") or "平局",
+            "home_win_prob": prediction.get("home_win_prob"),
+            "draw_prob": prediction.get("draw_prob"),
+            "away_win_prob": prediction.get("away_win_prob"),
+            "confidence": prediction.get("confidence"),
+            "top_scores": prediction.get("top_scores", []),
+        },
+        "home_metrics": {
+            "name": home["name"],
+            "overall_rating": home.get("overall_rating"),
+            "attack_strength": home.get("attack_strength"),
+            "defense_strength": home.get("defense_strength"),
+            "recent_form": home.get("recent_form"),
+        },
+        "away_metrics": {
+            "name": away["name"],
+            "overall_rating": away.get("overall_rating"),
+            "attack_strength": away.get("attack_strength"),
+            "defense_strength": away.get("defense_strength"),
+            "recent_form": away.get("recent_form"),
+        },
+        "metric_gaps": {
+            "overall_gap_home_minus_away": round(float(home.get("overall_rating", 0)) - float(away.get("overall_rating", 0)), 4),
+            "attack_gap_home_minus_away": round(float(home.get("attack_strength", 0)) - float(away.get("attack_strength", 0)), 4),
+            "defense_gap_home_minus_away": round(float(home.get("defense_strength", 0)) - float(away.get("defense_strength", 0)), 4),
+            "form_gap_home_minus_away": round(float(home.get("recent_form", 0)) - float(away.get("recent_form", 0)), 4),
+        },
+        "agent_trace": trace,
+        "narration_text": prediction.get("explanation") or explanation.get("text"),
+    }
+
+
+def _build_rule_match_analysis(
+    match: dict[str, Any],
+    prediction: dict[str, Any],
+    explanation: dict[str, Any],
+    ratings: dict[str, dict[str, Any]],
+) -> str:
+    home = match["home_team_name"]
+    away = match["away_team_name"]
+    home_rating = ratings[match["home_team_id"]]
+    away_rating = ratings[match["away_team_id"]]
+    winner = prediction.get("winner_name") or "平局"
+    score = f"{prediction['predicted_home_score']}-{prediction['predicted_away_score']}"
+    home_prob = float(prediction.get("home_win_prob") or 0)
+    draw_prob = float(prediction.get("draw_prob") or 0)
+    away_prob = float(prediction.get("away_win_prob") or 0)
+    overall_gap = float(home_rating.get("overall_rating", 0)) - float(away_rating.get("overall_rating", 0))
+    attack_gap = float(home_rating.get("attack_strength", 0)) - float(away_rating.get("attack_strength", 0))
+    defense_gap = float(home_rating.get("defense_strength", 0)) - float(away_rating.get("defense_strength", 0))
+    probs = sorted(
+        [("主胜", home_prob), ("平局", draw_prob), ("客胜", away_prob)],
+        key=lambda item: item[1],
+        reverse=True,
+    )
+    confidence_gap = probs[0][1] - probs[1][1] if len(probs) > 1 else probs[0][1]
+    confidence = "较高" if confidence_gap >= 0.18 else "中等" if confidence_gap >= 0.08 else "接近"
+
+    trace = prediction.get("agent_trace") or []
+    scout = _trace_item(trace, "DataScoutAgent")
+    analyst = _trace_item(trace, "FootballAnalystAgent")
+    simulation = _trace_item(trace, "SimulationAgent")
+    critic = _trace_item(trace, "CriticAgent")
+    factors = [str(item) for item in analyst.get("factors", []) if item]
+    factor_lines = factors[:4] or [prediction.get("explanation") or explanation.get("text") or "当前模型主要依据球队评分、攻防强度和固定比分模拟结果。"]
+    warnings = [str(item) for item in critic.get("warnings", []) if item]
+    warning_text = "；".join(warnings[:2]) if warnings else "未发现比分与胜者字段冲突，但单场比赛仍存在临场阵容、红黄牌和战术调整等不确定性。"
+
+    return "\n".join(
+        [
+            "结论",
+            f"本场预测为 {home} {score} {away}，结果倾向 {winner}。模型给出的最高概率方向是{probs[0][0]}（{probs[0][1]:.1%}），与第二选择的差距为 {confidence_gap:.1%}，因此信心等级为{confidence}。",
+            "",
+            "实力与数据依据",
+            f"1. 数据侦察：{scout.get('summary') or '已读取双方本地数据库资料。'}",
+            f"2. 攻防对比：{home} 进攻 {home_rating.get('attack_strength', 0):.2f}、防守 {home_rating.get('defense_strength', 0):.2f}；{away} 进攻 {away_rating.get('attack_strength', 0):.2f}、防守 {away_rating.get('defense_strength', 0):.2f}。进攻差值 {attack_gap:+.2f}，防守差值 {defense_gap:+.2f}。",
+            f"3. 综合强弱：{home} 综合 {home_rating.get('overall_rating', 0):.2f}，{away} 综合 {away_rating.get('overall_rating', 0):.2f}，差值 {overall_gap:+.2f}。{factor_lines[0] if factor_lines else analyst.get('summary', '双方综合评分差距有限，需要结合比分模型判断。')}",
+            "",
+            "比分形成逻辑",
+            f"固定模拟器给出的核心结果是：{simulation.get('summary') or f'{home} {score} {away}。'}",
+            f"从概率分布看，主胜 {home_prob:.1%}、平局 {draw_prob:.1%}、客胜 {away_prob:.1%}。预测比分不是单看胜负概率，而是把双方进攻、防守、近期状态和阵容可用性压缩到进球期望后得到的最可能比分。",
+            "",
+            "风险提示",
+            f"{warning_text} 所以该结果应理解为模型赛前预测，不是真实赛果。若临场首发或伤病信息变化，比分和胜负倾向都可能被重新修正。",
+        ]
+    )
+
+
+async def _build_match_analysis(
+    match: dict[str, Any],
+    prediction: dict[str, Any],
+    explanation: dict[str, Any],
+    ratings: dict[str, dict[str, Any]],
+) -> tuple[str, str]:
+    fallback = _build_rule_match_analysis(match, prediction, explanation, ratings)
+    context = _analysis_context(match, prediction, explanation, ratings)
+    try:
+        from app.harness.runtime import my_claude_runtime
+
+        if not my_claude_runtime.enabled:
+            return fallback, "rule"
+        system_prompt = (
+            "你是 worldcup-predict-agent 的赛后解释撰稿节点，运行在 my-claude-code harness 中。"
+            "你只能整合用户提供的结构化指标，不得改动比分、概率、胜者或编造新闻。"
+            "输出中文，语气清晰克制，面向普通用户。"
+            "必须按以下小节输出，每个小节标题独占一行：结论、实力指标、攻防对比、比分逻辑、风险提示。"
+            "不要使用 Markdown 标题、星号、反引号或项目符号。"
+        )
+        user_prompt = (
+            "请根据下面 JSON 为可视化页面生成一段更具体、更有逻辑的单场比赛预测原因分析。"
+            "要求：1）明确说明双方关键指标差异；2）解释为什么这个比分合理；"
+            "3）如果指标非常接近，不要强行说某队明显占优；4）总长度约 350-650 字。\n"
+            f"{json.dumps(context, ensure_ascii=False, default=str)}"
+        )
+        text = (await my_claude_runtime.complete_direct(system_prompt=system_prompt, user_prompt=user_prompt)).strip()
+        if len(text) >= 80 and "结论" in text:
+            return text, "harness"
+    except Exception:
+        pass
+    return fallback, "rule"
+
+
+async def predict_single_match(
+    match_id: str,
+    *,
+    realtime: bool = False,
+    allow_draw: bool | None = None,
+    progress_emit: ProgressEmit | None = None,
+) -> dict[str, Any]:
     match = get_match(match_id)
     if not match:
         raise ValueError(f"未找到比赛 {match_id}")
@@ -334,14 +498,19 @@ async def predict_single_match(match_id: str, *, realtime: bool = False, allow_d
 
     async def emit(event: str, message: str, phase: str | None = None, data: dict[str, Any] | None = None) -> None:
         events.append({"event": event, "message": message, "phase": phase, "data": data or {}})
+        if progress_emit:
+            await progress_emit(event, message, phase, data or {})
 
     pipeline = MatchPredictionPipeline(emit)
     prediction, explanation = await pipeline.predict(match, teams, ratings, allow_draw=draw_allowed, phase="MATCH_WORKFLOW")
+    analysis, analysis_source = await _build_match_analysis(match, prediction, explanation, ratings)
     record = {
         "match_id": match["match_id"],
         "match": match,
         "prediction": prediction,
         "explanation": explanation,
+        "analysis": analysis,
+        "analysis_source": analysis_source,
         "agent_events": events,
         "agent_trace": prediction.get("agent_trace", []),
         "mode": "realtime" if realtime else "historical",

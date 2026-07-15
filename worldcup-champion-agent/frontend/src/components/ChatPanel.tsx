@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Button, Drawer, Input, Space, Spin, Tag } from "antd";
-import { CloseOutlined, MessageOutlined, SendOutlined } from "@ant-design/icons";
+import { CloseOutlined, DownOutlined, MessageOutlined, SendOutlined, UpOutlined } from "@ant-design/icons";
 
 import { connectChatStream, createChatSession, sendChatMessage, startChatPrediction, type ChatMessage } from "../api/chatApi";
 import { usePredictionStore } from "../stores/predictionStore";
@@ -8,6 +8,13 @@ import { usePredictionStore } from "../stores/predictionStore";
 interface ChatPanelProps {
   visible: boolean;
   onClose: () => void;
+}
+
+interface ReasoningStep {
+  message: string;
+  stage: string;
+  status: string;
+  timestamp: string;
 }
 
 const PHASE_LABELS: Record<string, string> = {
@@ -38,6 +45,11 @@ export function ChatPanel({ visible, onClose }: ChatPanelProps) {
   const [sessionError, setSessionError] = useState<string | null>(null);
   const [streaming, setStreaming] = useState(false);
   const [thinkingText, setThinkingText] = useState("Agent 正在思考...");
+  const [forceWebSearch, setForceWebSearch] = useState(false);
+  const [reasoningSteps, setReasoningSteps] = useState<ReasoningStep[]>([]);
+  const [reasoningExpanded, setReasoningExpanded] = useState(false);
+  const [reasoningStartedAt, setReasoningStartedAt] = useState<number | null>(null);
+  const [reasoningElapsed, setReasoningElapsed] = useState(0);
   const endRef = useRef<HTMLDivElement>(null);
   const sourceRef = useRef<EventSource | null>(null);
   const connectedRunRef = useRef<string | null>(null);
@@ -58,7 +70,35 @@ export function ChatPanel({ visible, onClose }: ChatPanelProps) {
             return;
           }
           if (event === "agent_status") {
-            setThinkingText(String(data.message ?? "Agent 正在思考..."));
+            const message = String(data.message ?? "Agent 正在思考...");
+            if (!reasoningStartedAt) setReasoningStartedAt(Date.now());
+            setThinkingText(message);
+            setReasoningSteps((prev) => [
+              ...prev,
+              {
+                message,
+                stage: "status",
+                status: "running",
+                timestamp: String(data.timestamp ?? new Date().toISOString()),
+              },
+            ].slice(-12));
+            setStreaming(true);
+            return;
+          }
+          if (event === "agent_progress") {
+            const message = String(data.message ?? "");
+            if (message) {
+              setReasoningSteps((prev) => [
+                ...prev,
+                {
+                  message,
+                  stage: String(data.stage ?? data.tool ?? "progress"),
+                  status: String(data.status ?? "running"),
+                  timestamp: String(data.timestamp ?? new Date().toISOString()),
+                },
+              ].slice(-12));
+            }
+            setThinkingText(message || "Agent 正在处理...");
             setStreaming(true);
             return;
           }
@@ -99,6 +139,18 @@ export function ChatPanel({ visible, onClose }: ChatPanelProps) {
               ];
             });
             setStreaming(false);
+            if (reasoningStartedAt) {
+              setReasoningElapsed(Math.max(1, Math.round((Date.now() - reasoningStartedAt) / 1000)));
+            }
+            setReasoningSteps((prev) => [
+              ...prev,
+              {
+                message: "已整理完成，生成最终回答。",
+                stage: "final",
+                status: "completed",
+                timestamp: String(data.timestamp ?? new Date().toISOString()),
+              },
+            ].slice(-12));
             setThinkingText("Agent 正在思考...");
             return;
           }
@@ -177,22 +229,54 @@ export function ChatPanel({ visible, onClose }: ChatPanelProps) {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, streaming]);
 
+  useEffect(() => {
+    if (!reasoningStartedAt || !streaming) return;
+    const timer = window.setInterval(() => {
+      setReasoningElapsed(Math.max(1, Math.round((Date.now() - reasoningStartedAt) / 1000)));
+    }, 500);
+    return () => window.clearInterval(timer);
+  }, [reasoningStartedAt, streaming]);
+
   const handleSend = useCallback(async () => {
     if (!inputValue.trim() || !sessionId || streaming || initializing) return;
     const text = inputValue.trim();
     setInputValue("");
-    setThinkingText("Agent 正在接收问题...");
+    const startedAt = Date.now();
+    setReasoningStartedAt(startedAt);
+    setReasoningElapsed(0);
+    setReasoningExpanded(false);
+    setReasoningSteps([
+      {
+        message: "已收到问题，正在进入分析流程。",
+        stage: "received",
+        status: "running",
+        timestamp: new Date(startedAt).toISOString(),
+      },
+    ]);
+    setThinkingText(forceWebSearch ? "实时搜索已开启，Agent 正在联网核验..." : "Agent 正在接收问题...");
     setStreaming(true);
     try {
-      await sendChatMessage(sessionId, text);
+      await sendChatMessage(sessionId, text, { forceWebSearch });
     } catch {
       setMessages((prev) => [...prev, { role: "system", content: "发送失败", timestamp: new Date().toISOString() }]);
       setStreaming(false);
     }
-  }, [inputValue, sessionId, streaming, initializing]);
+  }, [inputValue, sessionId, streaming, initializing, forceWebSearch]);
 
   const handleStartPrediction = useCallback(async () => {
     if (!sessionId || streaming || initializing) return;
+    const startedAt = Date.now();
+    setReasoningStartedAt(startedAt);
+    setReasoningElapsed(0);
+    setReasoningExpanded(false);
+    setReasoningSteps([
+      {
+        message: "已触发预测流程，正在准备任务。",
+        stage: "prediction",
+        status: "running",
+        timestamp: new Date(startedAt).toISOString(),
+      },
+    ]);
     setThinkingText("Agent 正在启动预测工作流...");
     setStreaming(true);
     try {
@@ -204,6 +288,27 @@ export function ChatPanel({ visible, onClose }: ChatPanelProps) {
   }, [sessionId, streaming, initializing]);
 
   const inputDisabled = streaming || initializing || !sessionId;
+  const lastMessage = messages[messages.length - 1];
+  const answerAfterReasoning = Boolean(reasoningSteps.length > 0 && lastMessage?.role === "agent");
+  const visibleMessages = answerAfterReasoning ? messages.slice(0, -1) : messages;
+  const finalAnswerMessage = answerAfterReasoning ? lastMessage : null;
+  const reasoningTitle = `${streaming ? "思考中" : "已思考"}${reasoningElapsed > 0 ? `（用时 ${reasoningElapsed} 秒）` : ""}`;
+
+  const renderMessage = (msg: ChatMessage, index: number) => (
+    <div key={`${msg.timestamp}-${index}`} className={`chatBubble chatBubble--${msg.role}`}>
+      {msg.role === "system" ? (
+        <div className="chatSystemMsg">
+          {msg.phase && <Tag color="blue">{PHASE_LABELS[msg.phase] ?? msg.phase}</Tag>}
+          <span>{msg.content}</span>
+        </div>
+      ) : (
+        <>
+          <div className="chatRoleLabel">{msg.role === "user" ? "你" : "Agent"}</div>
+          <div className="chatContent">{msg.content}</div>
+        </>
+      )}
+    </div>
+  );
 
   return (
     <Drawer
@@ -242,21 +347,34 @@ export function ChatPanel({ visible, onClose }: ChatPanelProps) {
             )}
           </div>
         )}
-        {messages.map((msg, index) => (
-          <div key={`${msg.timestamp}-${index}`} className={`chatBubble chatBubble--${msg.role}`}>
-            {msg.role === "system" ? (
-              <div className="chatSystemMsg">
-                {msg.phase && <Tag color="blue">{PHASE_LABELS[msg.phase] ?? msg.phase}</Tag>}
-                <span>{msg.content}</span>
-              </div>
-            ) : (
-              <>
-                <div className="chatRoleLabel">{msg.role === "user" ? "你" : "Agent"}</div>
-                <div className="chatContent">{msg.content}</div>
-              </>
-            )}
+        {visibleMessages.map(renderMessage)}
+        {reasoningSteps.length > 0 && (
+          <div className={`chatReasoningPanel ${reasoningExpanded ? "chatReasoningPanel--expanded" : ""}`}>
+            <div className="chatReasoningHeader">
+              {streaming ? <Spin size="small" /> : <span className="chatReasoningDot chatReasoningDot--completed" />}
+              <span>{reasoningTitle}</span>
+              <Tag color={streaming ? "processing" : "green"}>{streaming ? "进行中" : "已完成"}</Tag>
+              <Button
+                type="text"
+                size="small"
+                className="chatReasoningToggle"
+                icon={reasoningExpanded ? <UpOutlined /> : <DownOutlined />}
+                onClick={() => setReasoningExpanded((value) => !value)}
+              >
+                {reasoningExpanded ? "收起" : "展开"}
+              </Button>
+            </div>
+            <div className="chatReasoningSteps">
+              {reasoningSteps.map((step, index) => (
+                <div key={`${step.timestamp}-${index}`} className={`chatReasoningStep chatReasoningStep--${step.status}`}>
+                  <span className={`chatReasoningDot chatReasoningDot--${step.status}`} />
+                  <span>{step.message}</span>
+                </div>
+              ))}
+            </div>
           </div>
-        ))}
+        )}
+        {finalAnswerMessage && renderMessage(finalAnswerMessage, messages.length - 1)}
         {streaming && !(messages[messages.length - 1]?.role === "agent" && !messages[messages.length - 1]?._done) && (
           <div className="chatBubble chatBubble--agent chatBubble--thinking">
             <Spin size="small" />
@@ -267,6 +385,14 @@ export function ChatPanel({ visible, onClose }: ChatPanelProps) {
       </div>
 
       <div className="chatQuickActions">
+        <Button
+          size="small"
+          type={forceWebSearch ? "primary" : "default"}
+          onClick={() => setForceWebSearch((value) => !value)}
+          disabled={initializing || !sessionId}
+        >
+          {forceWebSearch ? "实时搜索：开" : "开启实时搜索"}
+        </Button>
         <Button size="small" onClick={handleStartPrediction} disabled={inputDisabled}>
           启动完整冠军预测
         </Button>

@@ -14,6 +14,7 @@ class ChatMessageRequest(BaseModel):
     """User chat input."""
 
     message: str = Field(min_length=1, max_length=4000)
+    force_web_search: bool = False
 
 
 class StartPredictionRequest(BaseModel):

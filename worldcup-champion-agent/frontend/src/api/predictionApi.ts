@@ -148,6 +148,10 @@ export async function getTeams() {
   );
 }
 
+export async function getTeamDetail(teamId: string) {
+  return readJson<any>(await apiFetch(`/api/teams/${encodeURIComponent(teamId)}`), "Failed to load team detail");
+}
+
 export async function getMatches(options: { forceRefresh?: boolean } = {}) {
   return rememberFrontend(
     "matches",
@@ -170,6 +174,37 @@ export async function predictMatch(matchId: string) {
   const result = await readJson<any>(await apiFetch(`/api/matches/${encodeURIComponent(matchId)}/predict`, { method: "POST" }), "Failed to predict match");
   clearFrontendDataCache();
   return result;
+}
+
+export async function startMatchPrediction(matchId: string) {
+  return readJson<{ run_id: string; match_id: string; status: string }>(
+    await apiFetch(`/api/matches/${encodeURIComponent(matchId)}/predict/start`, { method: "POST" }),
+    "Failed to start match prediction",
+  );
+}
+
+export function connectMatchPredictionStream(
+  runId: string,
+  onEvent: (event: string, data: Record<string, any>) => void,
+  onError: (error: Event) => void,
+) {
+  const source = new EventSource(`${getApiBaseUrl()}/api/matches/predict-runs/${runId}/stream`);
+  const events = [
+    "prediction_start",
+    "agent_node",
+    "agent_progress",
+    "data_scout_update",
+    "prediction_complete",
+    "prediction_error",
+  ];
+  events.forEach((eventName) => {
+    source.addEventListener(eventName, (event) => {
+      const data = JSON.parse((event as MessageEvent).data);
+      onEvent(eventName, data);
+    });
+  });
+  source.onerror = onError;
+  return source;
 }
 
 export async function getMatchPrediction(matchId: string) {

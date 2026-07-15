@@ -1,4 +1,8 @@
+import asyncio
+import uuid
+
 from fastapi import APIRouter, HTTPException
+from sse_starlette.sse import EventSourceResponse
 
 from app.services.cache_service import cache_service
 from app.services.match_prediction_service import (
@@ -7,8 +11,49 @@ from app.services.match_prediction_service import (
     list_schedule,
     predict_single_match,
 )
+from app.services.stream_service import stream_service
 
 router = APIRouter(prefix="/api/matches", tags=["matches"])
+
+TERMINAL_EVENTS = {"prediction_complete", "prediction_error", "prediction_canceled"}
+
+
+async def _run_match_prediction_stream(run_id: str, match_id: str, realtime: bool) -> None:
+    try:
+        await stream_service.publish(run_id, "prediction_start", "开始单场比赛预测", "MATCH_WORKFLOW", {"match_id": match_id})
+
+        async def emit(event: str, message: str, phase: str | None = None, data: dict | None = None) -> None:
+            payload = data or {}
+            await stream_service.publish(run_id, event, message, phase, payload)
+            if event in {"agent_node", "data_scout_update"}:
+                await stream_service.publish(
+                    run_id,
+                    "agent_progress",
+                    message,
+                    phase,
+                    {
+                        "stage": payload.get("agent") or event,
+                        "status": "completed",
+                        "detail": payload,
+                    },
+                )
+
+        record = await predict_single_match(match_id, realtime=realtime, progress_emit=emit)
+        await stream_service.publish(
+            run_id,
+            "prediction_complete",
+            "单场预测完成",
+            "MATCH_WORKFLOW",
+            {"match_id": match_id, "record": record},
+        )
+    except Exception as exc:
+        await stream_service.publish(
+            run_id,
+            "prediction_error",
+            f"单场预测失败：{exc}",
+            "MATCH_WORKFLOW",
+            {"match_id": match_id, "error": str(exc)},
+        )
 
 
 @router.get("")
@@ -66,6 +111,20 @@ async def predict_match(match_id: str, realtime: bool = False) -> dict:
         return result
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/{match_id}/predict/start")
+async def start_predict_match(match_id: str, realtime: bool = False) -> dict:
+    if not get_match(match_id):
+        raise HTTPException(status_code=404, detail="比赛不存在")
+    run_id = f"match_{uuid.uuid4().hex}"
+    asyncio.create_task(_run_match_prediction_stream(run_id, match_id, realtime))
+    return {"run_id": run_id, "match_id": match_id, "status": "started"}
+
+
+@router.get("/predict-runs/{run_id}/stream")
+async def stream_match_prediction(run_id: str) -> EventSourceResponse:
+    return EventSourceResponse(stream_service.stream(run_id))
 
 
 @router.get("/{match_id}/prediction")

@@ -85,6 +85,36 @@ class WorldCupDataScoutService:
         reports = [self.team_report(row["name"]) for row in self._all_team_rows()]
         return [self._frontend_team(report) for report in reports if report]
 
+    def team_detail_by_id(self, team_id: str) -> dict[str, Any] | None:
+        normalized_id = team_id.upper()
+        team = next((item for item in self.list_teams() if item["team_id"] == normalized_id), None)
+        if not team:
+            return None
+
+        report = team.get("database") or self.team_report(team["name"]) or {}
+        players = [
+            {
+                "name": row["name"],
+                "attack": int(row["attack"] or 0),
+                "defense": int(row["defensive"] or 0),
+                "overall": round((float(row["attack"] or 0) + float(row["defensive"] or 0)) / 2, 1),
+                "injured": bool(row["injured"]),
+                "injury_description": row.get("injury_description") or "",
+                "is_starter": row["name"] in set(report.get("starting_lineup") or []),
+            }
+            for row in self._all_member_rows()
+            if self._team_id(row["team_name"]) == normalized_id
+        ]
+        players.sort(key=lambda item: (not item["is_starter"], item["injured"], -item["overall"], item["name"]))
+
+        return {
+            **team,
+            "database": report,
+            "starting_lineup": report.get("starting_lineup") or [item["name"] for item in players[:11]],
+            "injured_players": report.get("injured_players") or [item for item in players if item["injured"]],
+            "players": players,
+        }
+
     def team_id_for_name(self, name: str) -> str:
         return self._team_id(name)
 

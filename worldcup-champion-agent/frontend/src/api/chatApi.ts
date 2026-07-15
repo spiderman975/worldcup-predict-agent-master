@@ -19,11 +19,15 @@ export async function createChatSession(): Promise<{ session_id: string }> {
   return response.json();
 }
 
-export async function sendChatMessage(sessionId: string, message: string) {
+export async function sendChatMessage(
+  sessionId: string,
+  message: string,
+  options: { forceWebSearch?: boolean } = {},
+) {
   const response = await apiFetch(`/api/chat/sessions/${sessionId}/messages`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({ message, force_web_search: Boolean(options.forceWebSearch) }),
   });
   if (!response.ok) throw new Error("Failed to send chat message");
   return response.json();
@@ -52,6 +56,7 @@ export function connectChatStream(
     "agent_done",
     "agent_error",
     "agent_status",
+    "agent_progress",
     "system_message",
     "prediction_start",
     "phase",

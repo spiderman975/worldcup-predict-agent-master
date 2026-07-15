@@ -11,6 +11,7 @@ from datetime import date, datetime, timedelta
 from typing import Any, AsyncGenerator, Literal
 from zoneinfo import ZoneInfo
 
+from app.services.data_scout_service import data_scout_service
 from app.services.llm_service import llm_service
 from app.services.match_prediction_service import (
     find_match_from_text,
@@ -36,6 +37,7 @@ class ChatSession:
         self.created_at = datetime.now(BEIJING_TZ)
         self.active_task: asyncio.Task[None] | None = None
         self.run_id: str | None = None
+        self.force_web_search: bool = False
 
 
 _sessions: dict[str, ChatSession] = {}
@@ -69,7 +71,35 @@ async def _put_message(session: ChatSession, role: str, content: str, **extra: A
     )
 
 
+def _clean_final_answer(content: str) -> str:
+    cleaned = content.replace("**", "").replace("###", "").replace("##", "").replace("`", "")
+    cleaned = re.sub(r"^\s*[-*]\s+", "", cleaned, flags=re.MULTILINE)
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+    process_markers = (
+        "我先确认",
+        "先确认今天",
+        "先确定今天",
+        "我将先",
+        "我会先",
+        "正在调用",
+        "调用工具",
+        "工具调用",
+        "交给 harness",
+        "进入 harness",
+        "识别比赛",
+        "确定对阵",
+    )
+    lines = []
+    for line in cleaned.splitlines():
+        stripped = line.strip()
+        if stripped and any(marker in stripped for marker in process_markers):
+            continue
+        lines.append(line.rstrip())
+    return "\n".join(lines).strip()
+
+
 async def _stream_agent_message(session: ChatSession, content: str, **extra: Any) -> None:
+    content = _clean_final_answer(content)
     timestamp = _message_time()
     for token in content:
         await session.queue.put(
@@ -81,22 +111,117 @@ async def _stream_agent_message(session: ChatSession, content: str, **extra: Any
     )
 
 
+async def _build_realtime_search_context(session: ChatSession) -> str:
+    if not session.force_web_search or not session.messages:
+        return ""
+
+    query = session.messages[-1]["content"]
+    await session.queue.put(
+        {
+            "event": "agent_progress",
+            "data": {
+                "message": "实时搜索已开启，正在联网搜索最新信息...",
+                "tool": "worldcup_web_search",
+                "status": "running",
+                "source": "chat",
+                "timestamp": _message_time(),
+            },
+        }
+    )
+    try:
+        search_result = await data_scout_service.search(query, include_web=True, top_k=5)
+    except Exception as exc:
+        logger.warning("Forced realtime search failed: %s", exc)
+        await session.queue.put(
+            {
+                "event": "agent_progress",
+                "data": {
+                    "message": "实时搜索调用失败，将继续交给 harness 结合本地数据回答。",
+                    "tool": "worldcup_web_search",
+                    "status": "failed",
+                    "source": "chat",
+                    "timestamp": _message_time(),
+                },
+            }
+        )
+        return "本轮用户开启了实时搜索，但联网搜索调用失败。回答时需要明确说明无法获得实时网页结果，并优先使用数据库与已知上下文。"
+
+    web_count = len(search_result.get("web", []))
+    await session.queue.put(
+        {
+            "event": "agent_progress",
+            "data": {
+                "message": f"实时搜索完成，获得 {web_count} 条网页结果，正在交给 harness 分析。",
+                "tool": "worldcup_web_search",
+                "status": "completed",
+                "source": "chat",
+                "timestamp": _message_time(),
+            },
+        }
+    )
+    return (
+        "本轮用户开启了实时搜索。系统已在进入 harness 前强制执行 include_web=True 的联网搜索预检。"
+        "回答必须优先参考下面的实时搜索结果；如果 web 结果为空，需要明确说明未获得可用网页结果，不能假装已经查到。\n"
+        f"{json.dumps(search_result, ensure_ascii=False, default=str)}"
+    )
+
+
 async def _stream_with_llm(session: ChatSession) -> str:
     if my_claude_runtime_service.enabled:
         answer = ""
         timestamp = _message_time()
-        contextual_messages = [
+        loop = asyncio.get_running_loop()
+        await session.queue.put(
             {
-                "role": "system",
-                "content": f"当前北京时间是 {_format_beijing_datetime(_now_beijing())}。涉及今天、现在、赛前赛后时必须以这个时间为准。",
-            },
-            *session.messages,
-        ]
-        async for token in my_claude_runtime_service.stream(contextual_messages):
+                "event": "agent_progress",
+                "data": {
+                    "stage": "harness_prepare",
+                    "status": "running",
+                    "message": "已接入 harness，正在识别意图并规划工具调用。",
+                    "timestamp": _message_time(),
+                    "source": "chat",
+                },
+            }
+        )
+        realtime_context = await _build_realtime_search_context(session)
+
+        def emit_harness_progress(payload: dict[str, Any]) -> None:
+            loop.call_soon_threadsafe(
+                session.queue.put_nowait,
+                {
+                    "event": "agent_progress",
+                    "data": {
+                        **payload,
+                        "timestamp": _message_time(),
+                        "source": "harness",
+                    },
+                },
+            )
+
+        system_content = (
+            f"当前北京时间是 {_format_beijing_datetime(_now_beijing())}。"
+            "涉及今天、现在、赛前赛后时必须以这个时间为准。"
+            "最终回答要先给结论，再给关键依据；不要展开长篇推理过程。"
+            "如果是比赛预测，控制在“预测比分/胜负倾向/3条关键依据/风险提示”这几个部分内。"
+            "最终回答不要使用 Markdown 标题、粗体星号、反引号或项目符号；用自然中文、短段落和编号即可。"
+            "确认日期、识别对阵、查询数据库、调用工具等过程只属于推理流程，不要写进最终回答。"
+        )
+        if session.force_web_search:
+            system_content += (
+                "\n用户已开启实时搜索模式：本轮回答必须基于系统提供的实时搜索预检结果；"
+                "必要时继续调用 harness 工具 worldcup_web_search、worldcup_search_match_result "
+                "或 worldcup_search_database(include_web=true)，不要跳过实时信息核验。"
+            )
+        if realtime_context:
+            system_content += f"\n\n实时搜索预检结果：\n{realtime_context}"
+
+        contextual_messages = [{"role": "system", "content": system_content}, *session.messages]
+        async for token in my_claude_runtime_service.stream(contextual_messages, progress_callback=emit_harness_progress):
             answer += token
             await session.queue.put(
                 {"event": "agent_token", "data": {"role": "agent", "token": token, "timestamp": timestamp}}
             )
+        answer = _clean_final_answer(answer)
         await session.queue.put(
             {"event": "agent_done", "data": {"role": "agent", "content": answer, "timestamp": timestamp}}
         )
@@ -172,13 +297,13 @@ def _format_prediction(record: dict[str, Any], prefix: str = "预测完成") -> 
     match = record["match"]
     winner = prediction.get("winner_name") or "平局"
     score = f"{prediction['predicted_home_score']}-{prediction['predicted_away_score']}"
-    trace = prediction.get("agent_trace") or []
-    trace_text = "；".join(str(item.get("summary", "")) for item in trace[:3] if item.get("summary"))
     return (
-        f"{prefix}：{match['home_team_name']} vs {match['away_team_name']}，模型倾向 {winner}，预测比分 {score}。\n"
+        f"{prefix}：{match['home_team_name']} vs {match['away_team_name']}\n"
+        f"预测比分：{score}\n"
+        f"胜负倾向：模型倾向 {winner}。\n"
         f"胜平负概率：主胜 {prediction['home_win_prob']:.1%}，平局 {prediction['draw_prob']:.1%}，客胜 {prediction['away_win_prob']:.1%}。\n"
-        f"理由：{prediction.get('explanation') or record.get('explanation', {}).get('text', '暂无解释文本')}\n"
-        f"工作流摘要：{trace_text or '已完成单场多 Agent 工作流。'}"
+        f"关键依据：{prediction.get('explanation') or record.get('explanation', {}).get('text', '暂无解释文本')}\n"
+        "提示：这是模型预测，不是真实赛果。"
     )
 
 
@@ -240,11 +365,43 @@ async def _answer_saved_prediction(user_message: str) -> str:
     return _format_prediction(saved, prefix="已保存预测")
 
 
-async def _answer_single_prediction(user_message: str) -> str:
+async def _answer_single_prediction(user_message: str, session: ChatSession | None = None) -> str:
     match = find_match_from_text(user_message)
     if not match:
-        return "我需要先确定比赛。请给我比赛 ID，或写成 `France vs Spain` 这种双方球队格式。"
-    record = await predict_single_match(match["match_id"], realtime=False)
+        return "我需要先确定比赛。可以直接写球队对阵，比如 `France vs Spain`，不需要手动提供比赛 ID。"
+
+    if session:
+        await session.queue.put(
+            {
+                "event": "agent_progress",
+                "data": {
+                    "stage": "match_resolve",
+                    "status": "completed",
+                    "message": f"已识别比赛：{match['home_team_name']} vs {match['away_team_name']}（{match['match_id']}）。",
+                    "timestamp": _message_time(),
+                },
+            }
+        )
+
+    async def emit_progress(event: str, message: str, phase: str | None = None, data: dict[str, Any] | None = None) -> None:
+        if not session or event not in {"agent_node", "data_scout_update"}:
+            return
+        payload = data or {}
+        await session.queue.put(
+            {
+                "event": "agent_progress",
+                "data": {
+                    "stage": payload.get("agent") or event,
+                    "status": "completed",
+                    "message": message,
+                    "phase": phase,
+                    "detail": payload,
+                    "timestamp": _message_time(),
+                },
+            }
+        )
+
+    record = await predict_single_match(match["match_id"], realtime=False, progress_emit=emit_progress)
     return _format_prediction(record)
 
 
@@ -256,11 +413,12 @@ async def _answer_with_llm(session: ChatSession) -> str:
     return _answer_identity()
 
 
-async def send_message(session_id: str, user_message: str) -> None:
+async def send_message(session_id: str, user_message: str, force_web_search: bool = False) -> None:
     session = _sessions.get(session_id)
     if not session:
         raise ValueError(f"Chat session {session_id} does not exist")
 
+    session.force_web_search = force_web_search
     session.messages.append({"role": "user", "content": user_message})
     await _put_message(session, "user", user_message)
 
@@ -280,7 +438,22 @@ async def _run_chat_turn(session: ChatSession, user_message: str) -> None:
             }
         )
         intent = _classify(user_message)
+        if session.force_web_search and my_claude_runtime_service.enabled:
+            answer = await _stream_with_llm(session)
+            session.messages.append({"role": "assistant", "content": answer})
+            return
         if intent in {"single_predict", "saved_prediction"} and my_claude_runtime_service.enabled:
+            await session.queue.put(
+                {
+                    "event": "agent_progress",
+                    "data": {
+                        "stage": "intent",
+                        "status": "completed",
+                        "message": "已识别为比赛预测/预测查询，将交给 harness 工具流程处理。",
+                        "timestamp": _message_time(),
+                    },
+                }
+            )
             answer = await _stream_with_llm(session)
             session.messages.append({"role": "assistant", "content": answer})
             return
@@ -291,7 +464,7 @@ async def _run_chat_turn(session: ChatSession, user_message: str) -> None:
         elif intent == "full_prediction":
             answer = "整届赛事预测仍依赖旧 demo 赛制规则，当前已停用。现在保留的是 SQLite 新数据的赛程查询、球队查询和单场预测。"
         elif intent == "single_predict":
-            answer = await _answer_single_prediction(user_message)
+            answer = await _answer_single_prediction(user_message, session)
         elif intent == "saved_prediction":
             answer = await _answer_saved_prediction(user_message)
         elif intent == "schedule":

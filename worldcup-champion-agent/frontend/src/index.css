@@ -281,6 +281,31 @@ button {
   color: #2563eb;
 }
 
+.predictionAnalysis {
+  display: grid;
+  gap: 12px;
+  margin: 14px 0 18px;
+}
+
+.predictionAnalysis section {
+  padding: 12px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.predictionAnalysis h4 {
+  margin: 0 0 8px;
+  color: #102033;
+  font-size: 15px;
+}
+
+.predictionAnalysis p {
+  margin: 6px 0;
+  color: #475569;
+  line-height: 1.65;
+}
+
 .probGrid {
   display: grid;
   gap: 10px;
@@ -317,6 +342,111 @@ button {
   background: #fff;
   display: grid;
   gap: 18px;
+}
+
+.teamDetailStats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+.teamDetailStats > div {
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+  display: grid;
+  gap: 4px;
+}
+
+.teamDetailStats strong {
+  color: #102033;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.teamDetailStats span {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.factorList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rosterLayout {
+  display: grid;
+  gap: 18px;
+}
+
+.rosterSection {
+  display: grid;
+  gap: 12px;
+}
+
+.rosterSection h3 {
+  margin: 0;
+  color: #102033;
+  font-size: 18px;
+}
+
+.playerGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.playerGrid--compact {
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+}
+
+.playerCard {
+  padding: 12px;
+  border: 1px solid #dbe4ef;
+  border-radius: 8px;
+  background: #fff;
+  display: grid;
+  gap: 10px;
+}
+
+.playerCard--injured {
+  border-color: #fecaca;
+  background: #fff7f7;
+}
+
+.playerCardHeader {
+  min-height: 32px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.playerCardHeader strong {
+  color: #102033;
+  line-height: 1.35;
+}
+
+.playerScores {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.playerScores span {
+  padding: 6px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 12px;
+  text-align: center;
+}
+
+.playerCard small {
+  color: #b91c1c;
+  line-height: 1.4;
 }
 
 .chatFloatBtn {
@@ -385,6 +515,145 @@ button {
 .chatThinking {
   margin-left: 8px;
   color: #64748b;
+}
+
+.chatReasoningPanel {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid #dbe4ef;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04);
+}
+
+.chatReasoningPanel:not(.chatReasoningPanel--expanded) .chatReasoningSteps {
+  max-height: 118px;
+  overflow: hidden;
+}
+
+.chatReasoningPanel:not(.chatReasoningPanel--expanded) .chatReasoningSteps::after {
+  content: "";
+  position: sticky;
+  bottom: 0;
+  display: block;
+  height: 26px;
+  margin-top: -26px;
+  background: linear-gradient(rgba(255, 255, 255, 0), #fff);
+  pointer-events: none;
+}
+
+.chatReasoningHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  color: #102033;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.chatReasoningHeader > span:nth-child(2) {
+  flex: 1;
+}
+
+.chatReasoningToggle {
+  color: #475569;
+  padding-inline: 6px;
+}
+
+.chatReasoningSteps {
+  display: grid;
+  gap: 8px;
+  max-height: 320px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.chatReasoningStep {
+  display: grid;
+  grid-template-columns: 10px 1fr;
+  gap: 8px;
+  align-items: start;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.chatReasoningDot {
+  width: 8px;
+  height: 8px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
+.chatReasoningDot--completed {
+  background: #16a34a;
+  box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.12);
+}
+
+.chatReasoningDot--failed {
+  background: #dc2626;
+  box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.12);
+}
+
+.chatReasoningStep--completed {
+  color: #334155;
+}
+
+.chatReasoningStep--failed {
+  color: #b91c1c;
+}
+
+.inlineProgress {
+  width: 100%;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid #dbe4ef;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.inlineProgress > strong {
+  display: block;
+  margin-bottom: 8px;
+  color: #102033;
+  font-size: 13px;
+}
+
+.progressStep {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.progressStep span {
+  width: 8px;
+  height: 8px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: #94a3b8;
+  flex: 0 0 auto;
+}
+
+.progressStep p {
+  margin: 0 0 6px;
+}
+
+.progressStep--running span {
+  background: #2563eb;
+}
+
+.progressStep--completed span {
+  background: #16a34a;
+}
+
+.progressStep--failed span {
+  background: #dc2626;
 }
 
 .chatQuickActions,

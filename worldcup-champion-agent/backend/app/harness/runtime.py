@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import threading
-from typing import Any
+from typing import Any, Callable
 
 import httpx
 from openai import OpenAI
@@ -32,7 +32,8 @@ SYSTEM_PROMPT = """
 7. 如果比赛未开赛或正在进行，才调用 worldcup_predict_match_workflow，并说明这是模型预测，不是真实赛果。
 8. 用户问“最新、刚刚、伤病、首发、阵容、新闻、赔率、真实比分、赛果”时，优先调用 worldcup_web_search 或 worldcup_search_match_result；如果数据库已足够且问题不需要实时信息，可以只查数据库。
 9. 用户问数据库、球队资料、历史预测、赛程时，优先使用本地工具，不要无意义联网。
-10. 如果数据库状态和北京时间推算不一致，必须把 data_quality.warnings 里的问题告诉用户，不能假装确定。
+10. 如果上层系统提示“用户已开启实时搜索模式”，必须优先使用实时搜索预检结果，并按需继续调用 worldcup_web_search / worldcup_search_match_result / worldcup_search_database(include_web=true) 核验，不要直接跳到离线回答。
+11. 如果数据库状态和北京时间推算不一致，必须把 data_quality.warnings 里的问题告诉用户，不能假装确定。
 
 可用核心工具：
 - worldcup_get_current_time：获取北京时间。
@@ -49,6 +50,10 @@ SYSTEM_PROMPT = """
 回答要求：
 - 必须使用中文。
 - 先给结论，再给关键依据。
+- 不要把完整内部推理过程写进最终回答；实时流程由系统单独推送。最终回答保持精炼。
+- 涉及单场预测时，按“预测比分 / 胜负倾向 / 关键依据 / 风险提示”组织，每部分 1-3 句即可。
+- 最终回答不要使用 Markdown 标题、粗体星号、反引号或项目符号；用自然中文、短段落和编号即可。
+- 不要在最终回答里写“我先确认日期”“我正在识别比赛”“我调用了工具”等过程句，这些只放在实时流程中。
 - 涉及预测时写清楚“这是模型预测，不是真实赛果”。
 - 如果信息缺失或工具返回冲突，要明确说明缺失/冲突点，并给出下一步建议。
 - 不要声称自己能读写代码、执行 shell 或使用未开放的工具；网页搜索只能通过 World Cup 业务工具完成。
@@ -71,13 +76,18 @@ class MyClaudeRuntime:
     async def complete(self, messages: list[dict[str, str]]) -> str:
         return await asyncio.to_thread(self._complete_sync, messages)
 
-    async def stream(self, messages: list[dict[str, str]]):
+    async def complete_direct(self, *, system_prompt: str, user_prompt: str) -> str:
+        """Run one harness-managed LLM call without business tool recursion."""
+
+        return await asyncio.to_thread(self._complete_direct_sync, system_prompt, user_prompt)
+
+    async def stream(self, messages: list[dict[str, str]], progress_callback: Callable[[dict[str, Any]], None] | None = None):
         queue: asyncio.Queue[str | Exception | None] = asyncio.Queue()
         loop = asyncio.get_running_loop()
 
         def produce() -> None:
             try:
-                for token in self._complete_sync_stream(messages):
+                for token in self._complete_sync_stream(messages, progress_callback=progress_callback):
                     loop.call_soon_threadsafe(queue.put_nowait, token)
                 loop.call_soon_threadsafe(queue.put_nowait, None)
             except Exception as exc:
@@ -132,7 +142,29 @@ class MyClaudeRuntime:
 
         return "我已经尝试调用业务工具，但工具循环次数达到上限。请把问题缩小到具体球队、日期或比赛。"
 
-    def _complete_sync_stream(self, messages: list[dict[str, str]]):
+    def _complete_direct_sync(self, system_prompt: str, user_prompt: str) -> str:
+        settings = get_settings()
+        client = self._client()
+        try:
+            response = resilient_call(
+                "llm_direct_completion",
+                lambda: client.chat.completions.create(
+                    model=settings.llm_model,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    temperature=settings.llm_temperature,
+                    max_tokens=settings.llm_max_tokens,
+                ),
+                max_attempts=3,
+                payload={"message_count": 2, "stream": False, "direct": True},
+            )
+        except CircuitOpenError as exc:
+            raise RuntimeError(f"大模型服务暂时熔断：{exc}") from exc
+        return response.choices[0].message.content or ""
+
+    def _complete_sync_stream(self, messages: list[dict[str, str]], progress_callback: Callable[[dict[str, Any]], None] | None = None):
         register_worldcup_tools()
         settings = get_settings()
         client = self._client()
@@ -201,11 +233,16 @@ class MyClaudeRuntime:
             if finish_reason != "tool_calls" or not tool_calls:
                 return
 
-            self._append_tool_results(runtime_messages, tool_calls)
+            self._append_tool_results(runtime_messages, tool_calls, progress_callback=progress_callback)
 
         yield "我已经尝试调用业务工具，但工具循环次数达到上限。请把问题缩小到具体球队、日期或比赛。"
 
-    def _append_tool_results(self, runtime_messages: list[dict[str, Any]], tool_calls: list[Any]) -> None:
+    def _append_tool_results(
+        self,
+        runtime_messages: list[dict[str, Any]],
+        tool_calls: list[Any],
+        progress_callback: Callable[[dict[str, Any]], None] | None = None,
+    ) -> None:
         for tool_call in tool_calls:
             if isinstance(tool_call, dict):
                 tool_call_id = tool_call.get("id", "")
@@ -226,15 +263,56 @@ class MyClaudeRuntime:
                 output = f"[错误] 未知工具: {name}"
             else:
                 try:
+                    self._emit_tool_progress(progress_callback, name, "running", args)
                     output = resilient_call(
                         f"harness_tool:{name}",
                         lambda: handler(**args),
                         max_attempts=2,
                         payload={"tool": name, "args": args},
                     )
+                    self._emit_tool_progress(progress_callback, name, "completed", args)
                 except Exception as exc:
+                    self._emit_tool_progress(progress_callback, name, "failed", args, error=str(exc))
                     output = f"[错误] 工具 {name} 调用失败：{exc}。失败任务已记录到 dead-letter 队列。"
             runtime_messages.append({"role": "tool", "tool_call_id": tool_call_id, "content": str(output)})
+
+    @staticmethod
+    def _emit_tool_progress(
+        progress_callback: Callable[[dict[str, Any]], None] | None,
+        tool_name: str,
+        status: str,
+        args: dict[str, Any],
+        *,
+        error: str | None = None,
+    ) -> None:
+        if not progress_callback:
+            return
+        labels = {
+            "worldcup_get_current_time": "确认北京时间",
+            "worldcup_resolve_match": "识别比赛",
+            "worldcup_get_match_context": "读取比赛上下文",
+            "worldcup_list_teams": "读取球队数据",
+            "worldcup_list_matches": "读取赛程数据",
+            "worldcup_get_saved_match_prediction": "查询已保存预测",
+            "worldcup_predict_match_workflow": "运行多 Agent 单场预测工作流",
+            "worldcup_search_database": "检索本地数据库",
+            "worldcup_web_search": "联网搜索实时信息",
+            "worldcup_search_match_result": "联网搜索真实比分",
+            "worldcup_get_team_database_report": "读取球队数据库报告",
+        }
+        status_text = {"running": "正在", "completed": "已完成", "failed": "失败"}.get(status, status)
+        title = labels.get(tool_name, tool_name)
+        message = f"{status_text}{title}"
+        if error:
+            message = f"{message}：{error}"
+        progress_callback(
+            {
+                "stage": tool_name,
+                "status": status,
+                "message": message,
+                "args": args,
+            }
+        )
 
 
 my_claude_runtime = MyClaudeRuntime()
