@@ -233,7 +233,7 @@ def _answer_team(message: str) -> str:
 async def _answer_saved_prediction(user_message: str) -> str:
     match = find_match_from_text(user_message)
     if not match:
-        return "你想查哪一场已经保存的预测？可以直接说比赛 ID，例如 s4_france_spain，或说 France vs Spain。"
+        return "你想查哪一场已经保存的预测？可以直接说双方球队，例如 France vs Spain。"
     saved = get_saved_match_prediction(match["match_id"])
     if not saved:
         return f"{match['match_id']}（{match['home_team_name']} vs {match['away_team_name']}）还没有保存的预测结果。你可以说“预测 {match['match_id']} 比分”来生成。"

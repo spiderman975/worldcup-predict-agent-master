@@ -25,7 +25,7 @@ def get_team(team_id: str) -> dict:
     team = cache_service.remember(
         cache_service.key("teams", "detail", normalized_id),
         cache_service.settings.cache_teams_ttl_seconds,
-        lambda: next((item for item in data_scout_service.list_teams() if item["team_id"] == normalized_id), None),
+        lambda: data_scout_service.team_detail(normalized_id),
     )
     if not team:
         raise HTTPException(status_code=404, detail="球队不存在")

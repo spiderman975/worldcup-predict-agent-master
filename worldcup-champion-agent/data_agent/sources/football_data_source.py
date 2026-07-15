@@ -7,6 +7,7 @@ import httpx
 from dotenv import load_dotenv
 
 from data_agent.normalizer import NormalizedMatch
+from data.stages import football_data_stage_to_number
 
 
 FOOTBALL_DATA_BASE_URL = "https://api.football-data.org/v4"
@@ -63,6 +64,7 @@ def normalize_football_data_matches(payload: dict[str, Any]) -> list[NormalizedM
                 away_score=away_score,
                 is_real=is_real,
                 played_at=item.get("utcDate"),
+                status=status,
             )
         )
     return matches
@@ -82,19 +84,5 @@ def _safe_int(value: Any) -> int | None:
 
 
 def _stage_number(item: dict[str, Any]) -> int:
-    stage = str(item.get("stage") or "").upper()
-    matchday = _safe_int(item.get("matchday"))
-    if stage in {"GROUP_STAGE", "GROUP"} or (matchday is not None and matchday <= 3):
-        return 1
-    if "LAST_16" in stage:
-        return 2
-    if "QUARTER" in stage:
-        return 3
-    if "SEMI" in stage:
-        return 4
-    if "THIRD" in stage:
-        return 5
-    if "FINAL" in stage:
-        return 6
-    return min(max(matchday or 1, 1), 8)
+    return football_data_stage_to_number(item.get("stage"))
 

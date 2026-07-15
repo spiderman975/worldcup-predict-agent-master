@@ -71,33 +71,32 @@ s1_colombia_portugal,1,Colombia,Portugal,0,0,true,2026-06-27T23:30:00Z
 s1_dr_congo_uzbekistan,1,DR Congo,Uzbekistan,3,1,true,2026-06-27T23:30:00Z
 s1_jordan_argentina,1,Jordan,Argentina,1,3,true,2026-06-28T02:00:00Z
 s1_algeria_austria,1,Algeria,Austria,3,3,true,2026-06-28T02:00:00Z
-s1_south_africa_canada,1,South Africa,Canada,0,1,true,2026-06-28T19:00:00Z
-s1_brazil_japan,1,Brazil,Japan,2,1,true,2026-06-29T17:00:00Z
-s1_germany_paraguay,1,Germany,Paraguay,4,5,true,2026-06-29T20:30:00Z
-s1_netherlands_morocco,1,Netherlands,Morocco,3,4,true,2026-06-30T01:00:00Z
-s1_ivory_coast_norway,1,Ivory Coast,Norway,1,2,true,2026-06-30T17:00:00Z
-s1_france_sweden,1,France,Sweden,3,0,true,2026-06-30T21:00:00Z
-s1_mexico_ecuador,1,Mexico,Ecuador,2,0,true,2026-07-01T02:00:00Z
-s1_england_dr_congo,1,England,DR Congo,2,1,true,2026-07-01T16:00:00Z
-s1_belgium_senegal,1,Belgium,Senegal,3,2,true,2026-07-01T20:00:00Z
-s1_united_states_bosnia_and_herzegovina,1,United States,Bosnia and Herzegovina,2,0,true,2026-07-02T00:00:00Z
-s1_spain_austria,1,Spain,Austria,3,0,true,2026-07-02T19:00:00Z
-s1_portugal_croatia,1,Portugal,Croatia,2,1,true,2026-07-02T23:00:00Z
-s1_switzerland_algeria,1,Switzerland,Algeria,2,0,true,2026-07-03T03:00:00Z
-s1_australia_egypt,1,Australia,Egypt,3,5,true,2026-07-03T18:00:00Z
-s1_argentina_cape_verde,1,Argentina,Cape Verde,3,2,true,2026-07-03T22:00:00Z
-s1_colombia_ghana,1,Colombia,Ghana,1,0,true,2026-07-04T01:30:00Z
-s2_canada_morocco,2,Canada,Morocco,0,3,true,2026-07-04T17:00:00Z
-s2_paraguay_france,2,Paraguay,France,0,1,true,2026-07-04T21:00:00Z
-s2_brazil_norway,2,Brazil,Norway,1,2,true,2026-07-05T20:00:00Z
-s2_mexico_england,2,Mexico,England,2,3,true,2026-07-06T01:00:00Z
-s2_portugal_spain,2,Portugal,Spain,0,1,true,2026-07-06T19:00:00Z
-s2_united_states_belgium,2,United States,Belgium,1,4,true,2026-07-07T00:00:00Z
-s2_argentina_egypt,2,Argentina,Egypt,3,2,true,2026-07-07T16:00:00Z
-s2_switzerland_colombia,2,Switzerland,Colombia,4,3,true,2026-07-07T20:00:00Z
-s3_france_morocco,3,France,Morocco,2,0,true,2026-07-09T20:00:00Z
-s3_spain_belgium,3,Spain,Belgium,2,1,true,2026-07-10T19:00:00Z
-s3_norway_england,3,Norway,England,1,2,true,2026-07-11T21:00:00Z
-s3_argentina_switzerland,3,Argentina,Switzerland,3,1,true,2026-07-12T01:00:00Z
-s4_france_spain,4,France,Spain,-1,-1,false,2026-07-14T19:00:00Z
-s4_england_argentina,4,England,Argentina,-1,-1,false,2026-07-15T19:00:00Z
+s2_south_africa_canada,2,South Africa,Canada,0,1,true,2026-06-28T19:00:00Z
+s2_brazil_japan,2,Brazil,Japan,2,1,true,2026-06-29T17:00:00Z
+s2_germany_paraguay,2,Germany,Paraguay,4,5,true,2026-06-29T20:30:00Z
+s2_netherlands_morocco,2,Netherlands,Morocco,3,4,true,2026-06-30T01:00:00Z
+s2_ivory_coast_norway,2,Ivory Coast,Norway,1,2,true,2026-06-30T17:00:00Z
+s2_france_sweden,2,France,Sweden,3,0,true,2026-06-30T21:00:00Z
+s2_mexico_ecuador,2,Mexico,Ecuador,2,0,true,2026-07-01T02:00:00Z
+s2_england_dr_congo,2,England,DR Congo,2,1,true,2026-07-01T16:00:00Z
+s2_belgium_senegal,2,Belgium,Senegal,3,2,true,2026-07-01T20:00:00Z
+s2_united_states_bosnia_and_herzegovina,2,United States,Bosnia and Herzegovina,2,0,true,2026-07-02T00:00:00Z
+s2_spain_austria,2,Spain,Austria,3,0,true,2026-07-02T19:00:00Z
+s2_portugal_croatia,2,Portugal,Croatia,2,1,true,2026-07-02T23:00:00Z
+s2_switzerland_algeria,2,Switzerland,Algeria,2,0,true,2026-07-03T03:00:00Z
+s2_australia_egypt,2,Australia,Egypt,3,5,true,2026-07-03T18:00:00Z
+s2_argentina_cape_verde,2,Argentina,Cape Verde,3,2,true,2026-07-03T22:00:00Z
+s2_colombia_ghana,2,Colombia,Ghana,1,0,true,2026-07-04T01:30:00Z
+s3_canada_morocco,3,Canada,Morocco,0,3,true,2026-07-04T17:00:00Z
+s3_paraguay_france,3,Paraguay,France,0,1,true,2026-07-04T21:00:00Z
+s3_brazil_norway,3,Brazil,Norway,1,2,true,2026-07-05T20:00:00Z
+s3_mexico_england,3,Mexico,England,2,3,true,2026-07-06T01:00:00Z
+s3_portugal_spain,3,Portugal,Spain,0,1,true,2026-07-06T19:00:00Z
+s3_united_states_belgium,3,United States,Belgium,1,4,true,2026-07-07T00:00:00Z
+s3_argentina_egypt,3,Argentina,Egypt,3,2,true,2026-07-07T16:00:00Z
+s3_switzerland_colombia,3,Switzerland,Colombia,4,3,true,2026-07-07T20:00:00Z
+s4_france_morocco,4,France,Morocco,2,0,true,2026-07-09T20:00:00Z
+s4_spain_belgium,4,Spain,Belgium,2,1,true,2026-07-10T19:00:00Z
+s4_norway_england,4,Norway,England,-1,-1,false,2026-07-11T21:00:00Z
+s4_argentina_switzerland,4,Argentina,Switzerland,-1,-1,false,2026-07-12T01:00:00Z
+s5_france_spain,5,France,Spain,-1,-1,false,2026-07-14T19:00:00Z

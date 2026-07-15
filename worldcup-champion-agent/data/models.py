@@ -69,8 +69,9 @@ class Match(BaseModel):
     away_team: str
     home_score: int = -1
     away_score: int = -1
-    stage: int = Field(ge=1, le=8)
+    stage: int = Field(ge=1, le=7)
     match_id: str
     is_real: bool = False
     played_at: str | None = None
+    status: str = ""
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from data_agent.normalizer import NormalizedDataset
+from data.stages import STAGE_NUMBER_TO_KEY
 
 
 @dataclass(frozen=True)
@@ -48,8 +49,8 @@ def validate_dataset(dataset: NormalizedDataset) -> ValidationReport:
         if match.match_id in seen_match_ids:
             errors.append(f"Duplicate match_id found: {match.match_id}")
         seen_match_ids.add(match.match_id)
-        if not 1 <= match.stage <= 8:
-            errors.append(f"Match {match.match_id} stage must be in 1~8")
+        if match.stage not in STAGE_NUMBER_TO_KEY:
+            errors.append(f"Match {match.match_id} stage must be one of {sorted(STAGE_NUMBER_TO_KEY)}")
         if match.home_team not in team_names:
             errors.append(f"Match {match.match_id} home_team is unknown: {match.home_team}")
         if match.away_team not in team_names:

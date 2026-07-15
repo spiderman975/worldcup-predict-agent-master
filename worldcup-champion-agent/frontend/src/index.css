@@ -150,6 +150,23 @@ button {
   backdrop-filter: blur(8px);
 }
 
+.newsCard--action {
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.newsCard--action:hover,
+.newsCard--action:focus-visible {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.22);
+  outline: 2px solid rgba(255, 255, 255, 0.72);
+  outline-offset: 2px;
+}
+
+.newsCard--action:active {
+  transform: translateY(0);
+}
+
 .videoBand {
   min-height: 220px;
   border-radius: 8px;
@@ -227,6 +244,48 @@ button {
 .dateTile--finished {
   border-color: #22c55e;
   background: #effcf4;
+}
+
+.dateTile--today {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.dateTile--pending {
+  border-color: #f59e0b;
+  background: #fffbeb;
+}
+
+.liveSyncBar,
+.focusPanel {
+  padding: 14px 16px;
+  border: 1px solid #dbe4ef;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.liveSyncBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  color: #475569;
+}
+
+.focusPanel {
+  display: grid;
+  gap: 14px;
+}
+
+.focusPanel h2 {
+  margin: 0;
+  color: #102033;
+  font-size: 18px;
+}
+
+.matchRow--highlight {
+  border-color: #2563eb;
+  background: #f8fbff;
 }
 
 .matchList {
@@ -317,6 +376,165 @@ button {
   background: #fff;
   display: grid;
   gap: 18px;
+}
+
+.sectionTitle,
+.thirdPlacePanel h2,
+.knockoutRound h2 {
+  margin: 0;
+  color: #102033;
+  font-size: 18px;
+}
+
+.knockoutPage {
+  max-width: 100%;
+}
+
+.knockoutScroller {
+  overflow-x: auto;
+  padding: 8px 0 18px;
+}
+
+.knockoutTree {
+  min-width: 1360px;
+  display: grid;
+  grid-template-columns: repeat(5, 240px);
+  gap: 34px;
+  align-items: stretch;
+}
+
+.knockoutRound {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.knockoutRoundNodes {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  gap: 14px;
+  position: relative;
+}
+
+.knockoutRound:not(:last-child) .knockoutNode::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: -35px;
+  width: 35px;
+  height: 2px;
+  background: #8aa1bd;
+}
+
+.knockoutRound:not(:first-child) .knockoutRoundNodes::before {
+  content: "";
+  position: absolute;
+  top: 36px;
+  bottom: 36px;
+  left: -18px;
+  width: 2px;
+  background: linear-gradient(#8aa1bd, #8aa1bd) center / 2px 100% no-repeat;
+}
+
+.knockoutNode {
+  min-height: 132px;
+  padding: 12px;
+  border: 1px solid #d4deea;
+  border-radius: 8px;
+  background: #fff;
+  position: relative;
+  display: grid;
+  gap: 8px;
+  box-shadow: 0 8px 20px rgba(20, 42, 73, 0.07);
+}
+
+.knockoutNode--placeholder {
+  border-style: dashed;
+  background: #f8fafc;
+  color: #64748b;
+}
+
+.knockoutNodeMeta,
+.knockoutStatus {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.knockoutTeam {
+  min-width: 0;
+  color: #15243a;
+  font-weight: 700;
+}
+
+.knockoutTeam span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.knockoutTeam--winner {
+  color: #0f8a43;
+}
+
+.knockoutTeam--loser {
+  color: #94a3b8;
+}
+
+.knockoutPending {
+  min-height: 64px;
+  display: grid;
+  place-items: center;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.knockoutVersus {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.knockoutVersus > strong {
+  color: #64748b;
+  font-size: 14px;
+}
+
+.knockoutActions {
+  display: flex;
+  gap: 8px;
+}
+
+.knockoutPrediction,
+.savedPredictionLine {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  color: #475569;
+  font-size: 12px;
+}
+
+.knockoutPrediction {
+  padding-top: 8px;
+  border-top: 1px dashed #dbe4ef;
+}
+
+.predictionTime {
+  margin-left: 8px;
+  color: #64748b;
+}
+
+.thirdPlacePanel {
+  max-width: 520px;
+  display: grid;
+  gap: 14px;
 }
 
 .chatFloatBtn {
@@ -420,5 +638,10 @@ button {
 
   .matchRow {
     grid-template-columns: 1fr;
+  }
+
+  .knockoutTree {
+    min-width: 1240px;
+    grid-template-columns: repeat(5, 220px);
   }
 }

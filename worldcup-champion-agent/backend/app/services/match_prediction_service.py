@@ -12,6 +12,7 @@ from zoneinfo import ZoneInfo
 
 from app.agent.match_pipeline import MatchPredictionPipeline
 from app.services.team_analysis_service import get_team_ratings_and_odds, search_teams
+from data.stages import stage_key_from_number
 
 
 PREDICTION_STORE = Path(__file__).resolve().parents[3] / "data" / "snapshots" / "match_predictions.json"
@@ -74,15 +75,48 @@ def _parse_match_time(value: str | None, index: int | None = None) -> datetime:
 
 
 def _db_stage_name(stage: int) -> str:
-    if stage <= 3:
-        return "group"
+    try:
+        return stage_key_from_number(stage)
+    except ValueError:
+        return str(stage)
+
+
+def match_display_status(row: Any, now: datetime | None = None) -> str:
+    source_status = str(row["status"] if "status" in row.keys() else "" or "").upper()
+    if source_status in {"POSTPONED", "SUSPENDED"}:
+        return "postponed"
+    if source_status in {"CANCELLED", "CANCELED"}:
+        return "cancelled"
+    home_score = int(row["home_score"])
+    away_score = int(row["away_score"])
+    if bool(row["is_real"]) and home_score >= 0 and away_score >= 0:
+        return "finished"
+    match_time = _parse_match_time(row["played_at"], None)
+    current = now or datetime.now(BEIJING_TZ).replace(tzinfo=None)
+    if current < match_time:
+        return "scheduled"
+    if match_time <= current < match_time + timedelta(hours=3):
+        return "live"
+    return "result_pending"
+
+
+def _prediction_summary(record: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not record:
+        return None
+    prediction = record.get("prediction") or {}
+    explanation = record.get("explanation") or prediction.get("explanation")
+    if isinstance(explanation, dict):
+        explanation = explanation.get("text") or json.dumps(explanation, ensure_ascii=False)
     return {
-        4: "round_of_32",
-        5: "round_of_16",
-        6: "quarter",
-        7: "semi",
-        8: "final",
-    }.get(stage, str(stage))
+        "predicted_home_score": prediction.get("predicted_home_score"),
+        "predicted_away_score": prediction.get("predicted_away_score"),
+        "home_win_prob": prediction.get("home_win_prob"),
+        "draw_prob": prediction.get("draw_prob"),
+        "away_win_prob": prediction.get("away_win_prob"),
+        "mode": record.get("mode") or "historical",
+        "created_at": record.get("created_at"),
+        "explanation": explanation,
+    }
 
 
 def _list_database_schedule() -> list[dict[str, Any]]:
@@ -92,21 +126,23 @@ def _list_database_schedule() -> list[dict[str, Any]]:
     with data_scout_service._connection() as connection:
         rows = connection.execute(
             """
-            SELECT match_id, stage, home_team, away_team, home_score, away_score, is_real, played_at
+            SELECT match_id, stage, home_team, away_team, home_score, away_score, is_real, played_at, status
             FROM matches
             ORDER BY played_at IS NULL, played_at, id
             """
         ).fetchall()
 
     ids = _team_id_by_name()
+    store = _load_store()
+    now = datetime.now(BEIJING_TZ).replace(tzinfo=None)
     schedule: list[dict[str, Any]] = []
     for index, row in enumerate(rows):
         played_at = _parse_match_time(row["played_at"], index)
         home_score = int(row["home_score"])
         away_score = int(row["away_score"])
-        finished = bool(row["is_real"]) and home_score >= 0 and away_score >= 0
         home_name = str(row["home_team"])
         away_name = str(row["away_team"])
+        status = match_display_status(row, now)
         schedule.append(
             {
                 "match_id": str(row["match_id"]),
@@ -121,9 +157,11 @@ def _list_database_schedule() -> list[dict[str, Any]]:
                 "match_time": played_at.isoformat(),
                 "match_date": played_at.date().isoformat(),
                 "venue": "TBD",
-                "status": "finished" if finished else "scheduled",
+                "status": status,
+                "source_status": str(row["status"] or ""),
                 "actual_home_score": home_score if home_score >= 0 else None,
                 "actual_away_score": away_score if away_score >= 0 else None,
+                "saved_prediction": _prediction_summary(store.get(str(row["match_id"]).upper())),
                 "is_database_match": True,
             }
         )
@@ -201,10 +239,10 @@ def _computed_status(match: dict[str, Any], now: datetime | None = None) -> str:
         return "finished"
     now = now or datetime.now(BEIJING_TZ).replace(tzinfo=None)
     match_time = _parse_match_time(str(match.get("match_time") or match.get("match_time_raw") or ""))
-    if now >= match_time + timedelta(hours=3):
-        return "finished_unverified"
     if match_time <= now < match_time + timedelta(hours=3):
-        return "live_or_recent"
+        return "live"
+    if now >= match_time + timedelta(hours=3):
+        return "result_pending"
     return "scheduled"
 
 

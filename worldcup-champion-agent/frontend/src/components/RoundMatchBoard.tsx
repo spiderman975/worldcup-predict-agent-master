@@ -13,8 +13,8 @@ export function RoundMatchBoard({ matches }: Props) {
   const selectMatch = usePredictionStore((state) => state.selectMatch);
   const [active, setActive] = useState<MatchPrediction | null>(null);
   if (matches.length === 0) return <Empty description="等待本轮比赛结果生成" />;
-  const grouped = matches.reduce<Record<string, MatchPrediction[]>>((acc, match) => {
-    const group = match.match_id.slice(0, 1);
+  const grouped = matches.reduce<Record<string, MatchPrediction[]>>((acc, match, index) => {
+    const group = String(Math.floor(index / 4) + 1);
     acc[group] = [...(acc[group] ?? []), match];
     return acc;
   }, {});
@@ -22,7 +22,7 @@ export function RoundMatchBoard({ matches }: Props) {
     <>
       <div className="roundGroupGrid">
         {Object.entries(grouped).map(([group, groupMatches]) => (
-          <Card key={group} title={`Group ${group}`} className="glassPanel">
+          <Card key={group} title={`第 ${group} 组`} className="glassPanel">
             <div className="roundMatchList">
               {groupMatches.map((match) => (
                 <button

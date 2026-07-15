@@ -37,6 +37,7 @@ class NormalizedMatch:
     away_score: int
     is_real: bool
     played_at: str | None
+    status: str = ""
 
 
 @dataclass(frozen=True)
@@ -124,6 +125,7 @@ def _normalize_match(row: dict[str, str]) -> NormalizedMatch:
         away_score=away_score,
         is_real=is_real,
         played_at=_clean(row.get("played_at", "")) or None,
+        status=_clean(row.get("status", "")),
     )
 
 

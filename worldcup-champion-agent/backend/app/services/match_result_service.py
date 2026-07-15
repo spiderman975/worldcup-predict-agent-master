@@ -123,7 +123,7 @@ class MatchResultService:
             cursor = connection.execute(
                 """
                 UPDATE matches
-                SET home_score = ?, away_score = ?, is_real = 1
+                SET home_score = ?, away_score = ?, is_real = 1, status = 'FINISHED'
                 WHERE match_id = ?
                 """,
                 (home_score, away_score, match_id),
@@ -146,8 +146,8 @@ class MatchResultService:
                 's3_spain_belgium',
                 's3_norway_england',
                 's3_argentina_switzerland',
-                's4_france_spain',
-                's4_england_argentina'
+                's5_france_spain',
+                's5_england_argentina'
             )
             """
         ).fetchall()
@@ -177,15 +177,15 @@ class MatchResultService:
                 played_at="2026-07-15T19:00:00Z",
             )
 
-        final_home = winner("s4_france_spain")
-        final_away = winner("s4_england_argentina")
-        third_home = loser("s4_france_spain")
-        third_away = loser("s4_england_argentina")
+        final_home = winner("s5_france_spain")
+        final_away = winner("s5_england_argentina")
+        third_home = loser("s5_france_spain")
+        third_away = loser("s5_england_argentina")
         if third_home and third_away:
             MatchResultService._upsert_future_match(
                 connection,
                 match_id=f"s5_{MatchResultService._slug(third_home)}_{MatchResultService._slug(third_away)}",
-                stage=5,
+                stage=6,
                 home_team=third_home,
                 away_team=third_away,
                 played_at="2026-07-18T21:00:00Z",
@@ -194,7 +194,7 @@ class MatchResultService:
             MatchResultService._upsert_future_match(
                 connection,
                 match_id=f"s6_{MatchResultService._slug(final_home)}_{MatchResultService._slug(final_away)}",
-                stage=6,
+                stage=7,
                 home_team=final_home,
                 away_team=final_away,
                 played_at="2026-07-19T19:00:00Z",
@@ -212,8 +212,8 @@ class MatchResultService:
     ) -> None:
         connection.execute(
             """
-            INSERT INTO matches (match_id, stage, home_team, away_team, home_score, away_score, is_real, played_at)
-            VALUES (?, ?, ?, ?, -1, -1, 0, ?)
+            INSERT INTO matches (match_id, stage, home_team, away_team, home_score, away_score, is_real, played_at, status)
+            VALUES (?, ?, ?, ?, -1, -1, 0, ?, '')
             ON CONFLICT(match_id) DO UPDATE SET
                 stage = excluded.stage,
                 home_team = excluded.home_team,

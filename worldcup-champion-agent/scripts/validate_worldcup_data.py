@@ -10,6 +10,10 @@ from typing import Callable
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DB_PATH = PROJECT_ROOT / "data" / "worldcup.db"
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from data.stages import STAGE_NUMBER_TO_KEY
 
 
 @dataclass
@@ -152,10 +156,13 @@ def _check_starting_lineup_members(connection: sqlite3.Connection) -> CheckResul
 
 
 def _check_match_stage(connection: sqlite3.Connection) -> CheckResult:
+    valid_stages = tuple(sorted(STAGE_NUMBER_TO_KEY))
+    placeholders = ",".join("?" for _ in valid_stages)
     rows = connection.execute(
-        "SELECT match_id, stage FROM matches WHERE stage < 1 OR stage > 8 ORDER BY match_id"
+        f"SELECT match_id, stage FROM matches WHERE stage NOT IN ({placeholders}) ORDER BY match_id",
+        valid_stages,
     ).fetchall()
-    return _result("matches.stage is in 1~8", [f"{row['match_id']} stage={row['stage']}" for row in rows])
+    return _result(f"matches.stage is one of {list(valid_stages)}", [f"{row['match_id']} stage={row['stage']}" for row in rows])
 
 
 def _check_unplayed_scores(connection: sqlite3.Connection) -> CheckResult:

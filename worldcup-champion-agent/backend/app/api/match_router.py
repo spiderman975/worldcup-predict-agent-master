@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from app.services.cache_service import cache_service
 from app.services.match_prediction_service import (
@@ -12,10 +12,10 @@ router = APIRouter(prefix="/api/matches", tags=["matches"])
 
 
 @router.get("")
-def list_matches(stage: str | None = None) -> list[dict]:
+def list_matches(stage: str | None = None, fresh: bool = Query(default=False)) -> list[dict]:
     """List matches with frontend-safe schedule fields."""
 
-    matches = cache_service.remember(
+    matches = list_schedule() if fresh else cache_service.remember(
         cache_service.key("matches", "list"),
         cache_service.settings.cache_matches_ttl_seconds,
         list_schedule,
@@ -26,7 +26,7 @@ def list_matches(stage: str | None = None) -> list[dict]:
 
 
 @router.get("/schedule")
-def get_schedule() -> dict:
+def get_schedule(fresh: bool = Query(default=False)) -> dict:
     def load_schedule() -> dict:
         matches = list_schedule()
         dates: dict[str, list[dict]] = {}
@@ -34,6 +34,8 @@ def get_schedule() -> dict:
             dates.setdefault(match["match_date"], []).append(match)
         return {"dates": [{"date": date, "matches": items} for date, items in sorted(dates.items())]}
 
+    if fresh:
+        return load_schedule()
     return cache_service.remember(
         cache_service.key("matches", "schedule"),
         cache_service.settings.cache_matches_ttl_seconds,

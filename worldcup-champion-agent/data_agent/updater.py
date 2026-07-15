@@ -31,7 +31,7 @@ class DataLayerUpdater:
     def write_dataset(self, dataset: NormalizedDataset) -> list[str]:
         warnings: list[str] = []
         self._write_teams(dataset.teams)
-        self._write_matches(dataset.matches)
+        self._replace_matches(dataset.matches)
         warnings.extend(self._apply_updates(dataset))
         return warnings
 
@@ -102,6 +102,13 @@ class DataLayerUpdater:
                 self.database.save_match(match)
             return
         raise MissingDataLayerError("data.database is missing save_matches() or save_match().")
+
+    def _replace_matches(self, matches: list[NormalizedMatch]) -> None:
+        match_models = [self._to_match_model(match) for match in matches]
+        if hasattr(self.database, "replace_matches"):
+            self.database.replace_matches(match_models)
+            return
+        self._write_matches(matches)
 
     def _apply_updates(self, dataset: NormalizedDataset) -> list[str]:
         warnings: list[str] = []
@@ -186,6 +193,7 @@ class DataLayerUpdater:
                     "away_score": match.away_score,
                     "stage": match.stage,
                     "match_id": match.match_id,
+                    "status": match.status,
                 },
             ],
         )

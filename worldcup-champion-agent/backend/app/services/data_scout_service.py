@@ -85,6 +85,32 @@ class WorldCupDataScoutService:
         reports = [self.team_report(row["name"]) for row in self._all_team_rows()]
         return [self._frontend_team(report) for report in reports if report]
 
+    def team_detail(self, team_id_or_name: str) -> dict[str, Any] | None:
+        self.ensure_database()
+        team = self._find_team_by_identifier(team_id_or_name)
+        if team is None:
+            return None
+
+        report = self.team_report(team.name)
+        if report is None:
+            return None
+
+        detail = self._frontend_team(report)
+        starters = set(report["starting_lineup"])
+        detail["starting_lineup"] = report["starting_lineup"]
+        detail["members"] = [
+            {
+                "name": member.name,
+                "attack": member.attack_member,
+                "defensive": member.defensive_member,
+                "injured": bool(member.injured),
+                "injury_description": member.injury_description,
+                "is_starting": member.name in starters,
+            }
+            for member in team.members
+        ]
+        return detail
+
     def team_id_for_name(self, name: str) -> str:
         return self._team_id(name)
 
@@ -265,6 +291,23 @@ class WorldCupDataScoutService:
         target = canonicalize_team_name(name, aliases).casefold()
         for team in get_all_teams():
             if canonicalize_team_name(team.name, aliases).casefold() == target or team.name.casefold() == name.casefold():
+                return team
+        return None
+
+    def _find_team_by_identifier(self, value: str):
+        from data.database import get_all_teams
+        from data_agent.team_aliases import canonicalize_team_name, load_team_aliases
+
+        aliases = load_team_aliases(self.project_root / "datasets" / "team_aliases.csv")
+        raw = str(value or "").strip()
+        target_id = raw.upper()
+        target_name = canonicalize_team_name(raw, aliases).casefold()
+        for team in get_all_teams():
+            if self._team_id(team.name) == target_id:
+                return team
+            if team.name.casefold() == raw.casefold():
+                return team
+            if canonicalize_team_name(team.name, aliases).casefold() == target_name:
                 return team
         return None
 

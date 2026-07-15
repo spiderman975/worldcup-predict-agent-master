@@ -60,6 +60,10 @@ class Settings:
         self.pre_match_include_web = os.getenv("PRE_MATCH_INCLUDE_WEB", "false").strip().lower() in {"1", "true", "yes", "on"}
         self.post_match_result_hours = int(os.getenv("POST_MATCH_RESULT_HOURS", "3"))
         self.post_match_include_web = os.getenv("POST_MATCH_INCLUDE_WEB", "true").strip().lower() in {"1", "true", "yes", "on"}
+        self.live_score_sync_enabled = os.getenv("LIVE_SCORE_SYNC_ENABLED", "true").strip().lower() in {"1", "true", "yes", "on"}
+        self.live_score_sync_interval_seconds = int(os.getenv("LIVE_SCORE_SYNC_INTERVAL_SECONDS", "300"))
+        self.football_data_season = int(os.getenv("FOOTBALL_DATA_SEASON", "2026"))
+        self.football_data_api_key = os.getenv("FOOTBALL_DATA_API_KEY") or None
 
     @property
     def cors_origin_list(self) -> list[str]:

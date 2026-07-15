@@ -13,6 +13,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from data_agent.team_aliases import canonicalize_team_name, load_team_aliases
+from data.stages import STAGE_NUMBER_TO_KEY
 
 
 @dataclass
@@ -214,9 +215,9 @@ def _check_stage(schedule: list[dict[str, str]]) -> CheckResult:
     failures: list[str] = []
     for row in schedule:
         stage = _to_int(row["stage"])
-        if stage is None or not 1 <= stage <= 8:
+        if stage is None or stage not in STAGE_NUMBER_TO_KEY:
             failures.append(f"{row['match_id']} stage={row['stage']}")
-    return _result("stage is in 1~8", failures)
+    return _result(f"stage is one of {sorted(STAGE_NUMBER_TO_KEY)}", failures)
 
 
 def _check_unplayed_scores(schedule: list[dict[str, str]]) -> CheckResult:

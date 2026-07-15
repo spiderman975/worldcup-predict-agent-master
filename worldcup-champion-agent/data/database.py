@@ -58,7 +58,8 @@ def init_db() -> None:
                 home_score INTEGER DEFAULT -1,
                 away_score INTEGER DEFAULT -1,
                 is_real BOOLEAN DEFAULT FALSE,
-                played_at TEXT
+                played_at TEXT,
+                status TEXT DEFAULT ''
             );
 
             CREATE TABLE IF NOT EXISTS app_checkpoints (
@@ -164,6 +165,7 @@ def init_db() -> None:
             CREATE INDEX IF NOT EXISTS idx_maintenance_action_time ON db_maintenance_log(action, created_at);
             """
         )
+        _ensure_column(connection, "matches", "status", "TEXT DEFAULT ''")
 
 
 def get_all_teams() -> list[Team]:
@@ -200,7 +202,7 @@ def get_matches(stage: int) -> list[Match]:
     with get_connection() as connection:
         rows = connection.execute(
             """
-            SELECT match_id, stage, home_team, away_team, home_score, away_score, is_real, played_at
+            SELECT match_id, stage, home_team, away_team, home_score, away_score, is_real, played_at, status
             FROM matches
             WHERE stage = ?
             ORDER BY id
@@ -269,33 +271,39 @@ def save_match(match: Match) -> None:
 def save_matches(matches: list[Match]) -> None:
     init_db()
     with get_connection() as connection:
-        for match in matches:
-            home_score, away_score, is_real = _normalize_match_score(match)
+        _upsert_matches(connection, matches)
+
+
+def replace_matches(matches: list[Match]) -> None:
+    init_db()
+    with get_connection() as connection:
+        _upsert_matches(connection, matches)
+        _migrate_match_references(connection, matches)
+        incoming_ids = [match.match_id for match in matches]
+        if incoming_ids:
+            placeholders = ",".join("?" for _ in incoming_ids)
+            connection.execute(
+                f"""
+                DELETE FROM matches
+                WHERE match_id NOT IN ({placeholders})
+                  AND match_id NOT IN (SELECT DISTINCT match_id FROM pre_match_updates)
+                  AND match_id NOT IN (SELECT DISTINCT match_id FROM post_match_results)
+                  AND match_id NOT IN (
+                      SELECT DISTINCT match_id FROM knowledge_documents WHERE match_id IS NOT NULL
+                  )
+                """,
+                incoming_ids,
+            )
+        else:
             connection.execute(
                 """
-                INSERT INTO matches (
-                    match_id, stage, home_team, away_team, home_score, away_score, is_real, played_at
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(match_id) DO UPDATE SET
-                    stage = excluded.stage,
-                    home_team = excluded.home_team,
-                    away_team = excluded.away_team,
-                    home_score = excluded.home_score,
-                    away_score = excluded.away_score,
-                    is_real = excluded.is_real,
-                    played_at = excluded.played_at
-                """,
-                (
-                    match.match_id,
-                    match.stage,
-                    match.home_team,
-                    match.away_team,
-                    home_score,
-                    away_score,
-                    int(is_real),
-                    match.played_at,
-                ),
+                DELETE FROM matches
+                WHERE match_id NOT IN (SELECT DISTINCT match_id FROM pre_match_updates)
+                  AND match_id NOT IN (SELECT DISTINCT match_id FROM post_match_results)
+                  AND match_id NOT IN (
+                      SELECT DISTINCT match_id FROM knowledge_documents WHERE match_id IS NOT NULL
+                  )
+                """
             )
 
 
@@ -307,7 +315,7 @@ def save_real_score(match_id: str, home: int, away: int) -> None:
         cursor = connection.execute(
             """
             UPDATE matches
-            SET home_score = ?, away_score = ?, is_real = 1
+            SET home_score = ?, away_score = ?, is_real = 1, status = 'FINISHED'
             WHERE match_id = ?
             """,
             (home, away, match_id),
@@ -435,6 +443,7 @@ def _match_from_row(row: sqlite3.Row) -> Match:
         away_score=int(row["away_score"]),
         is_real=bool(row["is_real"]),
         played_at=row["played_at"],
+        status=row["status"] if "status" in row.keys() else "",
     )
 
 
@@ -453,3 +462,64 @@ def _normalize_match_score(match: Match) -> tuple[int, int, bool]:
     if match.home_score < 0 or match.away_score < 0:
         raise ValueError(f"Match {match.match_id} must use -1/-1 for unplayed scores")
     return match.home_score, match.away_score, bool(match.is_real)
+
+
+def _upsert_matches(connection: sqlite3.Connection, matches: list[Match]) -> None:
+    for match in matches:
+        home_score, away_score, is_real = _normalize_match_score(match)
+        connection.execute(
+            """
+            INSERT INTO matches (
+                match_id, stage, home_team, away_team, home_score, away_score, is_real, played_at, status
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(match_id) DO UPDATE SET
+                stage = excluded.stage,
+                home_team = excluded.home_team,
+                away_team = excluded.away_team,
+                home_score = excluded.home_score,
+                away_score = excluded.away_score,
+                is_real = excluded.is_real,
+                played_at = excluded.played_at,
+                status = excluded.status
+            """,
+            (
+                match.match_id,
+                match.stage,
+                match.home_team,
+                match.away_team,
+                home_score,
+                away_score,
+                int(is_real),
+                match.played_at,
+                match.status,
+            ),
+        )
+
+
+def _migrate_match_references(connection: sqlite3.Connection, matches: list[Match]) -> None:
+    for match in matches:
+        legacy_rows = connection.execute(
+            """
+            SELECT match_id
+            FROM matches
+            WHERE match_id != ?
+              AND home_team = ?
+              AND away_team = ?
+              AND played_at IS ?
+            """,
+            (match.match_id, match.home_team, match.away_team, match.played_at),
+        ).fetchall()
+        for row in legacy_rows:
+            old_match_id = row["match_id"]
+            for table in ("pre_match_updates", "post_match_results", "knowledge_documents"):
+                connection.execute(
+                    f"UPDATE {table} SET match_id = ? WHERE match_id = ?",
+                    (match.match_id, old_match_id),
+                )
+
+
+def _ensure_column(connection: sqlite3.Connection, table: str, column: str, definition: str) -> None:
+    columns = {row["name"] for row in connection.execute(f"PRAGMA table_info({table})").fetchall()}
+    if column not in columns:
+        connection.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")

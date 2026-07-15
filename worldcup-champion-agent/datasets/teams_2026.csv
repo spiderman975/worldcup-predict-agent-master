@@ -1,49 +1,49 @@
 name,group,attack_team,defensive_team,streak,starting_lineup,fifa_ranking
-Czechia,A,1.0,1.0,0,Jindrich Stanek|Vladimir Coufal|Tomas Holes|Ladislav Krejci|David Jurasek|Tomas Soucek|Alex Kral|Lukas Provod|Patrik Schick|Adam Hlozek|Vaclav Cerny,
-Mexico,A,1.0,1.0,0,Luis Malagon|Jorge Sanchez|Johan Vasquez|Cesar Montes|Jesus Gallardo|Edson Alvarez|Luis Chavez|Orbelin Pineda|Hirving Lozano|Santiago Gimenez|Raul Jimenez,14
-South Africa,A,1.0,1.0,0,Ronwen Williams|Khuliso Mudau|Grant Kekana|Mothobi Mvala|Aubrey Modiba|Teboho Mokoena|Sphephelo Sithole|Themba Zwane|Percy Tau|Evidence Makgopa|Lyle Foster,59
-South Korea,A,1.0,1.0,0,Jo Hyeon-woo|Kim Moon-hwan|Kim Min-jae|Kim Young-gwon|Lee Myung-jae|Hwang In-beom|Lee Kang-in|Park Yong-woo|Son Heung-min|Hwang Hee-chan|Cho Gue-sung,23
-Bosnia and Herzegovina,B,1.0,1.0,0,Nikola Vasilj|Amar Dedic|Dennis Hadzikadunic|Adrian Leon Barisic|Sead Kolasinac|Miralem Pjanic|Rade Krunic|Benjamin Tahirovic|Edin Dzeko|Ermedin Demirovic|Haris Hajradinovic,
+Czechia,A,1.0,1.0,0,Jindrich Stanek|Vladimir Coufal|Tomas Holes|Ladislav Krejci|David Jurasek|Tomas Soucek|Alex Kral|Lukas Provod|Patrik Schick|Adam Hlozek|Vaclav Cerny,41
+Mexico,A,1.0,1.0,0,Luis Malagon|Jorge Sanchez|Johan Vasquez|Cesar Montes|Jesus Gallardo|Edson Alvarez|Luis Chavez|Orbelin Pineda|Hirving Lozano|Santiago Gimenez|Raul Jimenez,15
+South Africa,A,1.0,1.0,0,Ronwen Williams|Khuliso Mudau|Grant Kekana|Mothobi Mvala|Aubrey Modiba|Teboho Mokoena|Sphephelo Sithole|Themba Zwane|Percy Tau|Evidence Makgopa|Lyle Foster,60
+South Korea,A,1.0,1.0,0,Jo Hyeon-woo|Kim Moon-hwan|Kim Min-jae|Kim Young-gwon|Lee Myung-jae|Hwang In-beom|Lee Kang-in|Park Yong-woo|Son Heung-min|Hwang Hee-chan|Cho Gue-sung,25
+Bosnia and Herzegovina,B,1.0,1.0,0,Nikola Vasilj|Amar Dedic|Dennis Hadzikadunic|Adrian Leon Barisic|Sead Kolasinac|Miralem Pjanic|Rade Krunic|Benjamin Tahirovic|Edin Dzeko|Ermedin Demirovic|Haris Hajradinovic,65
 Canada,B,1.0,1.0,0,Maxime Crepeau|Alistair Johnston|Moise Bombito|Derek Cornelius|Alphonso Davies|Stephen Eustaquio|Ismael Kone|Jonathan Osorio|Tajon Buchanan|Jonathan David|Cyle Larin,30
-Qatar,B,1.0,1.0,0,Meshaal Barsham|Pedro Miguel|Boualem Khoukhi|Lucas Mendes|Homam Ahmed|Assim Madibo|Abdulaziz Hatem|Hassan Al-Haydos|Akram Afif|Almoez Ali|Mohammed Muntari,35
+Qatar,B,1.0,1.0,0,Meshaal Barsham|Pedro Miguel|Boualem Khoukhi|Lucas Mendes|Homam Ahmed|Assim Madibo|Abdulaziz Hatem|Hassan Al-Haydos|Akram Afif|Almoez Ali|Mohammed Muntari,55
 Switzerland,B,1.0,1.0,0,Gregor Kobel|Silvan Widmer|Manuel Akanji|Nico Elvedi|Ricardo Rodriguez|Granit Xhaka|Remo Freuler|Ardon Jashari|Dan Ndoye|Breel Embolo|Ruben Vargas,19
-Brazil,C,1.0,1.0,0,Alisson|Danilo|Marquinhos|Gabriel Magalhaes|Guilherme Arana|Bruno Guimaraes|Lucas Paqueta|Andre|Vinicius Junior|Rodrygo|Raphinha,5
-Haiti,C,1.0,1.0,0,Alexandre Pierre|Carlens Arcus|Ricardo Ade|Garven-Michee Metusala|Alex Christian|Bryan Alceus|Danley Jean Jacques|Leverton Pierre|Duckens Nazon|Frantzdy Pierrot|Louicius Don Deedson,
-Morocco,C,1.0,1.0,0,Yassine Bounou|Achraf Hakimi|Nayef Aguerd|Romain Saiss|Noussair Mazraoui|Sofyan Amrabat|Azzedine Ounahi|Bilal El Khannouss|Brahim Diaz|Youssef En-Nesyri|Ayoub El Kaabi,12
-Scotland,C,1.0,1.0,0,Angus Gunn|Aaron Hickey|Ryan Porteous|Scott McKenna|Kieran Tierney|Scott McTominay|Billy Gilmour|John McGinn|Che Adams|Lyndon Dykes|Ben Doak,
-Australia,D,1.0,1.0,0,Mathew Ryan|Ryan Strain|Harry Souttar|Kye Rowles|Aziz Behich|Jackson Irvine|Aiden ONeill|Riley McGree|Craig Goodwin|Mitchell Duke|Nestory Irankunda,24
-Paraguay,D,1.0,1.0,0,Roberto Fernandez|Gustavo Gomez|Omar Alderete|Junior Alonso|Santiago Arzamendia|Mathias Villasanti|Andres Cubas|Diego Gomez|Miguel Almiron|Julio Enciso|Antonio Sanabria,
-Turkey,D,1.0,1.0,0,Ugurcan Cakir|Zeki Celik|Merih Demiral|Abdulkerim Bardakci|Ferdi Kadioglu|Hakan Calhanoglu|Orkun Kokcu|Arda Guler|Kenan Yildiz|Baris Alper Yilmaz|Kerem Akturkoglu,26
-United States,D,1.0,1.0,0,Matt Turner|Sergino Dest|Chris Richards|Tim Ream|Antonee Robinson|Tyler Adams|Weston McKennie|Gio Reyna|Christian Pulisic|Timothy Weah|Folarin Balogun,13
-Curacao,E,1.0,1.0,0,Eloy Room|Cuco Martina|Roshon van Eijma|Sherel Floranus|Jurien Gaari|Leandro Bacuna|Juninho Bacuna|Vurnon Anita|Kenji Gorre|Gervane Kastaneer|Rangelo Janga,
-Ecuador,E,1.0,1.0,0,Hernan Galindez|Angelo Preciado|Felix Torres|Piero Hincapie|Pervis Estupinan|Moises Caicedo|Alan Franco|Kendry Paez|Enner Valencia|Kevin Rodriguez|Gonzalo Plata,31
-Germany,E,1.0,1.0,0,Marc-Andre ter Stegen|Joshua Kimmich|Jonathan Tah|Antonio Rudiger|David Raum|Aleksandar Pavlovic|Jamal Musiala|Florian Wirtz|Leroy Sane|Kai Havertz|Niclas Fullkrug,16
-Ivory Coast,E,1.0,1.0,0,Yahia Fofana|Serge Aurier|Odilon Kossounou|Evan Ndicka|Ghislain Konan|Franck Kessie|Ibrahim Sangare|Seko Fofana|Simon Adingra|Sebastien Haller|Oumar Diakite,46
-Japan,F,1.0,1.0,0,Zion Suzuki|Yukinari Sugawara|Ko Itakura|Takehiro Tomiyasu|Hiroki Ito|Wataru Endo|Hidemasa Morita|Ao Tanaka|Takefusa Kubo|Kaoru Mitoma|Daizen Maeda,17
+Brazil,C,1.0,1.0,0,Alisson|Danilo|Marquinhos|Gabriel Magalhaes|Guilherme Arana|Bruno Guimaraes|Lucas Paqueta|Andre|Vinicius Junior|Rodrygo|Raphinha,6
+Haiti,C,1.0,1.0,0,Alexandre Pierre|Carlens Arcus|Ricardo Ade|Garven-Michee Metusala|Alex Christian|Bryan Alceus|Danley Jean Jacques|Leverton Pierre|Duckens Nazon|Frantzdy Pierrot|Louicius Don Deedson,83
+Morocco,C,1.0,1.0,0,Yassine Bounou|Achraf Hakimi|Nayef Aguerd|Romain Saiss|Noussair Mazraoui|Sofyan Amrabat|Azzedine Ounahi|Bilal El Khannouss|Brahim Diaz|Youssef En-Nesyri|Ayoub El Kaabi,8
+Scotland,C,1.0,1.0,0,Angus Gunn|Aaron Hickey|Ryan Porteous|Scott McKenna|Kieran Tierney|Scott McTominay|Billy Gilmour|John McGinn|Che Adams|Lyndon Dykes|Ben Doak,36
+Australia,D,1.0,1.0,0,Mathew Ryan|Ryan Strain|Harry Souttar|Kye Rowles|Aziz Behich|Jackson Irvine|Aiden ONeill|Riley McGree|Craig Goodwin|Mitchell Duke|Nestory Irankunda,27
+Paraguay,D,1.0,1.0,0,Roberto Fernandez|Gustavo Gomez|Omar Alderete|Junior Alonso|Santiago Arzamendia|Mathias Villasanti|Andres Cubas|Diego Gomez|Miguel Almiron|Julio Enciso|Antonio Sanabria,40
+Turkey,D,1.0,1.0,0,Ugurcan Cakir|Zeki Celik|Merih Demiral|Abdulkerim Bardakci|Ferdi Kadioglu|Hakan Calhanoglu|Orkun Kokcu|Arda Guler|Kenan Yildiz|Baris Alper Yilmaz|Kerem Akturkoglu,22
+United States,D,1.0,1.0,0,Matt Turner|Sergino Dest|Chris Richards|Tim Ream|Antonee Robinson|Tyler Adams|Weston McKennie|Gio Reyna|Christian Pulisic|Timothy Weah|Folarin Balogun,16
+Curacao,E,1.0,1.0,0,Eloy Room|Cuco Martina|Roshon van Eijma|Sherel Floranus|Jurien Gaari|Leandro Bacuna|Juninho Bacuna|Vurnon Anita|Kenji Gorre|Gervane Kastaneer|Rangelo Janga,82
+Ecuador,E,1.0,1.0,0,Hernan Galindez|Angelo Preciado|Felix Torres|Piero Hincapie|Pervis Estupinan|Moises Caicedo|Alan Franco|Kendry Paez|Enner Valencia|Kevin Rodriguez|Gonzalo Plata,23
+Germany,E,1.0,1.0,0,Marc-Andre ter Stegen|Joshua Kimmich|Jonathan Tah|Antonio Rudiger|David Raum|Aleksandar Pavlovic|Jamal Musiala|Florian Wirtz|Leroy Sane|Kai Havertz|Niclas Fullkrug,9
+Ivory Coast,E,1.0,1.0,0,Yahia Fofana|Serge Aurier|Odilon Kossounou|Evan Ndicka|Ghislain Konan|Franck Kessie|Ibrahim Sangare|Seko Fofana|Simon Adingra|Sebastien Haller|Oumar Diakite,34
+Japan,F,1.0,1.0,0,Zion Suzuki|Yukinari Sugawara|Ko Itakura|Takehiro Tomiyasu|Hiroki Ito|Wataru Endo|Hidemasa Morita|Ao Tanaka|Takefusa Kubo|Kaoru Mitoma|Daizen Maeda,18
 Netherlands,F,1.0,1.0,0,Bart Verbruggen|Denzel Dumfries|Virgil van Dijk|Matthijs de Ligt|Nathan Ake|Frenkie de Jong|Tijjani Reijnders|Xavi Simons|Cody Gakpo|Memphis Depay|Donyell Malen,7
-Sweden,F,1.0,1.0,0,Robin Olsen|Emil Krafth|Victor Lindelof|Isak Hien|Ludwig Augustinsson|Jens Cajuste|Mattias Svanberg|Dejan Kulusevski|Alexander Isak|Viktor Gyokeres|Anthony Elanga,
-Tunisia,F,1.0,1.0,0,Bechir Ben Said|Wajdi Kechrida|Montassar Talbi|Yassine Meriah|Ali Abdi|Ellyes Skhiri|Aissa Laidouni|Hannibal Mejbri|Youssef Msakni|Elias Achouri|Seifeddine Jaziri,41
-Belgium,G,1.0,1.0,0,Koen Casteels|Timothy Castagne|Arthur Theate|Wout Faes|Maxim De Cuyper|Youri Tielemans|Amadou Onana|Kevin De Bruyne|Jeremy Doku|Lois Openda|Dodi Lukebakio,8
-Egypt,G,1.0,1.0,0,Mohamed El Shenawy|Mohamed Hany|Ahmed Hegazy|Mohamed Abdelmonem|Mohamed Hamdy|Mohamed Elneny|Hamdi Fathi|Emam Ashour|Mohamed Salah|Mostafa Mohamed|Omar Marmoush,32
-Iran,G,1.0,1.0,0,Alireza Beiranvand|Sadegh Moharrami|Shoja Khalilzadeh|Hossein Kanaanizadegan|Milad Mohammadi|Saeid Ezatolahi|Saman Ghoddos|Mehdi Torabi|Mehdi Taremi|Sardar Azmoun|Alireza Jahanbakhsh,20
-New Zealand,G,1.0,1.0,0,Max Crocombe|Tim Payne|Michael Boxall|Nando Pijnaker|Liberato Cacace|Joe Bell|Marko Stamenic|Matthew Garbett|Chris Wood|Ben Waine|Elijah Just,103
-Cape Verde,H,1.0,1.0,0,Vozinha|Roberto Lopes|Logan Costa|Steven Moreira|Joao Paulo Fernandes|Jamiro Monteiro|Kevin Pina|Deroy Duarte|Ryan Mendes|Garry Rodrigues|Dailon Livramento,
-Saudi Arabia,H,1.0,1.0,0,Mohammed Al-Owais|Saud Abdulhamid|Ali Al-Bulaihi|Hassan Tambakti|Yasser Al-Shahrani|Mohamed Kanno|Salem Al-Dawsari|Abdulrahman Ghareeb|Feras Al-Buraikan|Saleh Al-Shehri|Abdullah Radif,56
-Spain,H,1.0,1.0,0,Unai Simon|Dani Carvajal|Robin Le Normand|Aymeric Laporte|Alejandro Balde|Rodri|Pedri|Fabian Ruiz|Lamine Yamal|Nico Williams|Alvaro Morata,3
-Uruguay,H,1.0,1.0,0,Sergio Rochet|Nahitan Nandez|Jose Maria Gimenez|Ronald Araujo|Mathias Olivera|Federico Valverde|Manuel Ugarte|Rodrigo Bentancur|Darwin Nunez|Facundo Pellistri|Maximiliano Araujo,11
-France,I,1.0,1.0,0,Mike Maignan|Jules Kounde|William Saliba|Dayot Upamecano|Theo Hernandez|Aurelien Tchouameni|Eduardo Camavinga|Adrien Rabiot|Kylian Mbappe|Ousmane Dembele|Bradley Barcola,2
-Iraq,I,1.0,1.0,0,Jalal Hassan|Hussein Ali|Zaid Tahseen|Rebin Sulaka|Merchas Doski|Amir Al Ammari|Ibrahim Bayesh|Osama Rashid|Aymen Hussein|Ali Al-Hamadi|Mohanad Ali,58
-Norway,I,1.0,1.0,0,Orjan Nyland|Julian Ryerson|Leo Ostigard|Kristoffer Ajer|David Moller Wolfe|Sander Berge|Martin Odegaard|Patrick Berg|Erling Haaland|Alexander Sorloth|Antonio Nusa,34
-Senegal,I,1.0,1.0,0,Edouard Mendy|Kalidou Koulibaly|Moussa Niakhate|Ismail Jakobs|Krepin Diatta|Idrissa Gueye|Pape Matar Sarr|Lamine Camara|Sadio Mane|Nicolas Jackson|Ismaila Sarr,18
-Algeria,J,1.0,1.0,0,Anthony Mandrea|Youcef Atal|Ramy Bensebaini|Aissa Mandi|Mohamed Amine Tougai|Ismael Bennacer|Houssem Aouar|Ramiz Zerrouki|Riyad Mahrez|Said Benrahma|Mohamed Amoura,
-Argentina,J,1.0,1.0,0,Emiliano Martinez|Nahuel Molina|Cristian Romero|Nicolas Otamendi|Nicolas Tagliafico|Rodrigo De Paul|Enzo Fernandez|Alexis Mac Allister|Lionel Messi|Julian Alvarez|Lautaro Martinez,1
-Austria,J,1.0,1.0,0,Patrick Pentz|Stefan Posch|Kevin Danso|Philipp Lienhart|David Alaba|Konrad Laimer|Nicolas Seiwald|Marcel Sabitzer|Christoph Baumgartner|Marko Arnautovic|Michael Gregoritsch,22
-Jordan,J,1.0,1.0,0,Yazeed Abulaila|Ehsan Haddad|Abdallah Nasib|Yazan Al-Arab|Salem Al-Ajalin|Nizar Al-Rashdan|Noor Al-Rawabdeh|Mahmoud Mardi|Musa Al-Taamari|Yazan Al-Naimat|Ali Olwan,
-Colombia,K,1.0,1.0,0,Camilo Vargas|Daniel Munoz|Davinson Sanchez|Jhon Lucumi|Johan Mojica|Jefferson Lerma|Richard Rios|James Rodriguez|Luis Diaz|Jhon Arias|Jhon Duran,10
-DR Congo,K,1.0,1.0,0,Lionel Mpasi|Chancel Mbemba|Dylan Batubinsika|Arthur Masuaku|Gedeon Kalulu|Samuel Moutoussamy|Charles Pickel|Theo Bongonda|Yoane Wissa|Cedric Bakambu|Silas Katompa Mvumpa,
-Portugal,K,1.0,1.0,0,Diogo Costa|Joao Cancelo|Ruben Dias|Goncalo Inacio|Nuno Mendes|Bruno Fernandes|Vitinha|Bernardo Silva|Cristiano Ronaldo|Rafael Leao|Joao Felix,6
-Uzbekistan,K,1.0,1.0,0,Utkir Yusupov|Farrukh Sayfiyev|Rustamjon Ashurmatov|Abdukodir Khusanov|Sherzod Nasrullaev|Odiljon Hamrobekov|Otabek Shukurov|Abbosbek Fayzullaev|Eldor Shomurodov|Igor Sergeev|Jaloliddin Masharipov,61
-Croatia,L,1.0,1.0,0,Dominik Livakovic|Josip Stanisic|Josip Sutalo|Josko Gvardiol|Borna Sosa|Luka Modric|Mateo Kovacic|Martin Baturina|Andrej Kramaric|Ante Budimir|Luka Ivanusec,9
+Sweden,F,1.0,1.0,0,Robin Olsen|Emil Krafth|Victor Lindelof|Isak Hien|Ludwig Augustinsson|Jens Cajuste|Mattias Svanberg|Dejan Kulusevski|Alexander Isak|Viktor Gyokeres|Anthony Elanga,38
+Tunisia,F,1.0,1.0,0,Bechir Ben Said|Wajdi Kechrida|Montassar Talbi|Yassine Meriah|Ali Abdi|Ellyes Skhiri|Aissa Laidouni|Hannibal Mejbri|Youssef Msakni|Elias Achouri|Seifeddine Jaziri,44
+Belgium,G,1.0,1.0,0,Koen Casteels|Timothy Castagne|Arthur Theate|Wout Faes|Maxim De Cuyper|Youri Tielemans|Amadou Onana|Kevin De Bruyne|Jeremy Doku|Lois Openda|Dodi Lukebakio,10
+Egypt,G,1.0,1.0,0,Mohamed El Shenawy|Mohamed Hany|Ahmed Hegazy|Mohamed Abdelmonem|Mohamed Hamdy|Mohamed Elneny|Hamdi Fathi|Emam Ashour|Mohamed Salah|Mostafa Mohamed|Omar Marmoush,29
+Iran,G,1.0,1.0,0,Alireza Beiranvand|Sadegh Moharrami|Shoja Khalilzadeh|Hossein Kanaanizadegan|Milad Mohammadi|Saeid Ezatolahi|Saman Ghoddos|Mehdi Torabi|Mehdi Taremi|Sardar Azmoun|Alireza Jahanbakhsh,21
+New Zealand,G,1.0,1.0,0,Max Crocombe|Tim Payne|Michael Boxall|Nando Pijnaker|Liberato Cacace|Joe Bell|Marko Stamenic|Matthew Garbett|Chris Wood|Ben Waine|Elijah Just,85
+Cape Verde,H,1.0,1.0,0,Vozinha|Roberto Lopes|Logan Costa|Steven Moreira|Joao Paulo Fernandes|Jamiro Monteiro|Kevin Pina|Deroy Duarte|Ryan Mendes|Garry Rodrigues|Dailon Livramento,69
+Saudi Arabia,H,1.0,1.0,0,Mohammed Al-Owais|Saud Abdulhamid|Ali Al-Bulaihi|Hassan Tambakti|Yasser Al-Shahrani|Mohamed Kanno|Salem Al-Dawsari|Abdulrahman Ghareeb|Feras Al-Buraikan|Saleh Al-Shehri|Abdullah Radif,61
+Spain,H,1.0,1.0,0,Unai Simon|Dani Carvajal|Robin Le Normand|Aymeric Laporte|Alejandro Balde|Rodri|Pedri|Fabian Ruiz|Lamine Yamal|Nico Williams|Alvaro Morata,2
+Uruguay,H,1.0,1.0,0,Sergio Rochet|Nahitan Nandez|Jose Maria Gimenez|Ronald Araujo|Mathias Olivera|Federico Valverde|Manuel Ugarte|Rodrigo Bentancur|Darwin Nunez|Facundo Pellistri|Maximiliano Araujo,17
+France,I,1.0,1.0,0,Mike Maignan|Jules Kounde|William Saliba|Dayot Upamecano|Theo Hernandez|Aurelien Tchouameni|Eduardo Camavinga|Adrien Rabiot|Kylian Mbappe|Ousmane Dembele|Bradley Barcola,1
+Iraq,I,1.0,1.0,0,Jalal Hassan|Hussein Ali|Zaid Tahseen|Rebin Sulaka|Merchas Doski|Amir Al Ammari|Ibrahim Bayesh|Osama Rashid|Aymen Hussein|Ali Al-Hamadi|Mohanad Ali,57
+Norway,I,1.0,1.0,0,Orjan Nyland|Julian Ryerson|Leo Ostigard|Kristoffer Ajer|David Moller Wolfe|Sander Berge|Martin Odegaard|Patrick Berg|Erling Haaland|Alexander Sorloth|Antonio Nusa,31
+Senegal,I,1.0,1.0,0,Edouard Mendy|Kalidou Koulibaly|Moussa Niakhate|Ismail Jakobs|Krepin Diatta|Idrissa Gueye|Pape Matar Sarr|Lamine Camara|Sadio Mane|Nicolas Jackson|Ismaila Sarr,14
+Algeria,J,1.0,1.0,0,Anthony Mandrea|Youcef Atal|Ramy Bensebaini|Aissa Mandi|Mohamed Amine Tougai|Ismael Bennacer|Houssem Aouar|Ramiz Zerrouki|Riyad Mahrez|Said Benrahma|Mohamed Amoura,28
+Argentina,J,1.0,1.0,0,Emiliano Martinez|Nahuel Molina|Cristian Romero|Nicolas Otamendi|Nicolas Tagliafico|Rodrigo De Paul|Enzo Fernandez|Alexis Mac Allister|Lionel Messi|Julian Alvarez|Lautaro Martinez,3
+Austria,J,1.0,1.0,0,Patrick Pentz|Stefan Posch|Kevin Danso|Philipp Lienhart|David Alaba|Konrad Laimer|Nicolas Seiwald|Marcel Sabitzer|Christoph Baumgartner|Marko Arnautovic|Michael Gregoritsch,24
+Jordan,J,1.0,1.0,0,Yazeed Abulaila|Ehsan Haddad|Abdallah Nasib|Yazan Al-Arab|Salem Al-Ajalin|Nizar Al-Rashdan|Noor Al-Rawabdeh|Mahmoud Mardi|Musa Al-Taamari|Yazan Al-Naimat|Ali Olwan,63
+Colombia,K,1.0,1.0,0,Camilo Vargas|Daniel Munoz|Davinson Sanchez|Jhon Lucumi|Johan Mojica|Jefferson Lerma|Richard Rios|James Rodriguez|Luis Diaz|Jhon Arias|Jhon Duran,13
+DR Congo,K,1.0,1.0,0,Lionel Mpasi|Chancel Mbemba|Dylan Batubinsika|Arthur Masuaku|Gedeon Kalulu|Samuel Moutoussamy|Charles Pickel|Theo Bongonda|Yoane Wissa|Cedric Bakambu|Silas Katompa Mvumpa,46
+Portugal,K,1.0,1.0,0,Diogo Costa|Joao Cancelo|Ruben Dias|Goncalo Inacio|Nuno Mendes|Bruno Fernandes|Vitinha|Bernardo Silva|Cristiano Ronaldo|Rafael Leao|Joao Felix,5
+Uzbekistan,K,1.0,1.0,0,Utkir Yusupov|Farrukh Sayfiyev|Rustamjon Ashurmatov|Abdukodir Khusanov|Sherzod Nasrullaev|Odiljon Hamrobekov|Otabek Shukurov|Abbosbek Fayzullaev|Eldor Shomurodov|Igor Sergeev|Jaloliddin Masharipov,50
+Croatia,L,1.0,1.0,0,Dominik Livakovic|Josip Stanisic|Josip Sutalo|Josko Gvardiol|Borna Sosa|Luka Modric|Mateo Kovacic|Martin Baturina|Andrej Kramaric|Ante Budimir|Luka Ivanusec,11
 England,L,1.0,1.0,0,Jordan Pickford|Kyle Walker|John Stones|Marc Guehi|Luke Shaw|Declan Rice|Jude Bellingham|Phil Foden|Bukayo Saka|Harry Kane|Cole Palmer,4
-Ghana,L,1.0,1.0,0,Lawrence Ati-Zigi|Alidu Seidu|Alexander Djiku|Mohammed Salisu|Gideon Mensah|Thomas Partey|Mohammed Kudus|Majeed Ashimeru|Jordan Ayew|Inaki Williams|Antoine Semenyo,64
-Panama,L,1.0,1.0,0,Orlando Mosquera|Michael Murillo|Fidel Escobar|Jose Cordoba|Eric Davis|Anibal Godoy|Adalberto Carrasquilla|Cristian Martinez|Jose Fajardo|Cecilio Waterman|Ismael Diaz,45
+Ghana,L,1.0,1.0,0,Lawrence Ati-Zigi|Alidu Seidu|Alexander Djiku|Mohammed Salisu|Gideon Mensah|Thomas Partey|Mohammed Kudus|Majeed Ashimeru|Jordan Ayew|Inaki Williams|Antoine Semenyo,74
+Panama,L,1.0,1.0,0,Orlando Mosquera|Michael Murillo|Fidel Escobar|Jose Cordoba|Eric Davis|Anibal Godoy|Adalberto Carrasquilla|Cristian Martinez|Jose Fajardo|Cecilio Waterman|Ismael Diaz,33

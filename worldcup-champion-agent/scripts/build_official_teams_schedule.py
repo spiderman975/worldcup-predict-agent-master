@@ -17,6 +17,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from data_agent.team_aliases import canonicalize_team_name, load_team_aliases
+from data.stages import football_data_stage_to_number
 
 
 FOOTBALL_DATA_BASE_URL = "https://api.football-data.org/v4"
@@ -388,20 +389,7 @@ def _normalize_group(value: object) -> str:
 
 
 def _stage_number(match: dict) -> int:
-    stage = str(match.get("stage") or "").upper()
-    if "GROUP" in stage:
-        return 1
-    if "LAST_16" in stage:
-        return 2
-    if "QUARTER" in stage:
-        return 3
-    if "SEMI" in stage:
-        return 4
-    if "THIRD" in stage:
-        return 5
-    if "FINAL" in stage:
-        return 6
-    return 1
+    return football_data_stage_to_number(match.get("stage"))
 
 
 def _stable_match_id(stage: int, home_team: str, away_team: str, api_id: object, seen_ids: set[str]) -> str:

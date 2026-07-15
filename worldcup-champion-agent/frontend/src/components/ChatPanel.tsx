@@ -227,7 +227,7 @@ export function ChatPanel({ visible, onClose }: ChatPanelProps) {
         {messages.length === 0 && (
           <div className="chatEmpty">
             <p>我是世界杯预测主 Agent，可以查赛程、球队、已保存预测，也可以触发单场预测工作流。</p>
-            <p>试试：今天比赛安排、预测 s4_france_spain 比分、France vs Spain 谁赢。</p>
+            <p>试试：今天比赛安排、预测 France vs Spain 比分、哪支球队更有机会晋级。</p>
             {sessionError && (
               <Alert
                 type="error"
