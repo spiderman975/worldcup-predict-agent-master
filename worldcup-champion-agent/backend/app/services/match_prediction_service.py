@@ -351,6 +351,9 @@ async def predict_single_match(match_id: str, *, realtime: bool = False, allow_d
     store = _load_store()
     store[match["match_id"].upper()] = record
     _save_store(store)
+    from app.services.cache_service import cache_service
+
+    cache_service.invalidate_matches(match["match_id"])
     return record
 
 

@@ -10,6 +10,7 @@ from zoneinfo import ZoneInfo
 
 from app.core.config import get_settings
 from app.core.redis_client import redis_client
+from app.services.cache_service import cache_service
 from app.services.checkpoint_service import checkpoint_service
 from app.services.data_scout_service import data_scout_service
 
@@ -62,6 +63,7 @@ class MatchResultService:
             return {"success": False, "match_id": match["match_id"], "status": "parse_failed", "parsed": None}
 
         applied_at = self.apply_score(match["match_id"], parsed["home_score"], parsed["away_score"])
+        cache_service.invalidate_matches(match["match_id"])
         record = {**raw_record, "parsed": parsed, "applied_at": applied_at}
         self._save_result_record(
             match["match_id"],

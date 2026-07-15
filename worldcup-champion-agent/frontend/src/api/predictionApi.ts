@@ -12,6 +12,21 @@ const API_BASE_URL_CANDIDATES = Array.from(
 
 let activeApiBaseUrl = CONFIGURED_API_BASE_URL;
 
+type CacheEntry<T> = {
+  value?: T;
+  promise?: Promise<T>;
+  expiresAt: number;
+};
+
+const FRONTEND_CACHE_TTL = {
+  teams: 30 * 60 * 1000,
+  ratings: 30 * 60 * 1000,
+  matches: 15 * 60 * 1000,
+  schedule: 15 * 60 * 1000,
+};
+
+const frontendCache = new Map<string, CacheEntry<unknown>>();
+
 type RunCreateResponse = {
   run_id: string;
   status: string;
@@ -45,6 +60,53 @@ async function readJson<T>(response: Response, message: string): Promise<T> {
     throw new Error(detail || message);
   }
   return response.json();
+}
+
+function getCachedValue<T>(key: string): T | undefined {
+  const entry = frontendCache.get(key) as CacheEntry<T> | undefined;
+  if (!entry || entry.expiresAt <= Date.now()) return undefined;
+  return entry.value;
+}
+
+function rememberFrontend<T>(key: string, ttlMs: number, loader: () => Promise<T>, forceRefresh = false): Promise<T> {
+  const now = Date.now();
+  const current = frontendCache.get(key) as CacheEntry<T> | undefined;
+  if (!forceRefresh && current && current.expiresAt > now) {
+    if (current.value !== undefined) return Promise.resolve(current.value);
+    if (current.promise) return current.promise;
+  }
+  const promise = loader()
+    .then((value) => {
+      frontendCache.set(key, { value, expiresAt: Date.now() + ttlMs });
+      return value;
+    })
+    .catch((error) => {
+      frontendCache.delete(key);
+      throw error;
+    });
+  frontendCache.set(key, { promise, expiresAt: now + ttlMs });
+  return promise;
+}
+
+export function getCachedTeams() {
+  return getCachedValue<any[]>("teams");
+}
+
+export function getCachedMatches() {
+  return getCachedValue<any[]>("matches");
+}
+
+export function getCachedSchedule() {
+  return getCachedValue<{ dates: { date: string; matches: any[] }[] }>("schedule");
+}
+
+export function getCachedRatings() {
+  return getCachedValue<any>("ratings");
+}
+
+export function clearFrontendDataCache() {
+  frontendCache.delete("matches");
+  frontendCache.delete("schedule");
 }
 
 export async function createRun(config: { monte_carlo_runs: number; enable_realtime_search: boolean; mode?: string; knockout_round?: string }): Promise<RunCreateResponse> {
@@ -81,27 +143,43 @@ export async function cancelRun(runId: string) {
 }
 
 export async function getTeams() {
-  return readJson<any[]>(await apiFetch("/api/teams"), "获取球队失败");
+  return rememberFrontend("teams", FRONTEND_CACHE_TTL.teams, async () =>
+    readJson<any[]>(await apiFetch("/api/teams"), "Failed to load teams"),
+  );
 }
 
-export async function getMatches() {
-  return readJson<any[]>(await apiFetch("/api/matches"), "获取赛程失败");
+export async function getMatches(options: { forceRefresh?: boolean } = {}) {
+  return rememberFrontend(
+    "matches",
+    FRONTEND_CACHE_TTL.matches,
+    async () => readJson<any[]>(await apiFetch("/api/matches"), "Failed to load matches"),
+    options.forceRefresh,
+  );
 }
 
-export async function getSchedule() {
-  return readJson<{ dates: { date: string; matches: any[] }[] }>(await apiFetch("/api/matches/schedule"), "获取赛程日历失败");
+export async function getSchedule(options: { forceRefresh?: boolean } = {}) {
+  return rememberFrontend(
+    "schedule",
+    FRONTEND_CACHE_TTL.schedule,
+    async () => readJson<{ dates: { date: string; matches: any[] }[] }>(await apiFetch("/api/matches/schedule"), "Failed to load schedule"),
+    options.forceRefresh,
+  );
 }
 
 export async function predictMatch(matchId: string) {
-  return readJson<any>(await apiFetch(`/api/matches/${encodeURIComponent(matchId)}/predict`, { method: "POST" }), "单场预测失败");
+  const result = await readJson<any>(await apiFetch(`/api/matches/${encodeURIComponent(matchId)}/predict`, { method: "POST" }), "Failed to predict match");
+  clearFrontendDataCache();
+  return result;
 }
 
 export async function getMatchPrediction(matchId: string) {
-  return readJson<any>(await apiFetch(`/api/matches/${encodeURIComponent(matchId)}/prediction`), "获取单场预测失败");
+  return readJson<any>(await apiFetch(`/api/matches/${encodeURIComponent(matchId)}/prediction`), "Failed to load match prediction");
 }
 
 export async function getRatings() {
-  return readJson<any>(await apiFetch("/api/ratings"), "获取球队评分失败");
+  return rememberFrontend("ratings", FRONTEND_CACHE_TTL.ratings, async () =>
+    readJson<any>(await apiFetch("/api/ratings"), "Failed to load ratings"),
+  );
 }
 
 export async function searchTeams(query: string) {

@@ -11,7 +11,17 @@ import zhCN from "antd/locale/zh_CN";
 import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 
-import { getMatches, getRatings, getSchedule, getTeams, predictMatch } from "./api/predictionApi";
+import {
+  getCachedMatches,
+  getCachedRatings,
+  getCachedSchedule,
+  getCachedTeams,
+  getMatches,
+  getRatings,
+  getSchedule,
+  getTeams,
+  predictMatch,
+} from "./api/predictionApi";
 import { ChatPanel } from "./components/ChatPanel";
 
 type Team = {
@@ -49,6 +59,8 @@ type Rating = {
   attack_strength: number;
   defense_strength: number;
 };
+
+const QUIET_REFRESH_MS = 3 * 60 * 1000;
 
 function formatDate(value: string) {
   const date = new Date(value);
@@ -136,6 +148,15 @@ function PageTitle({ title, sub }: { title: string; sub?: string }) {
   );
 }
 
+function LoadingState({ text = "正在加载中..." }: { text?: string }) {
+  return (
+    <div className="loadingState">
+      <Spin />
+      <span>{text}</span>
+    </div>
+  );
+}
+
 function HomePage() {
   return (
     <div className="pageStack">
@@ -164,15 +185,23 @@ function HomePage() {
 }
 
 function SchedulePage() {
-  const [dates, setDates] = useState<{ date: string; matches: Match[] }[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cachedSchedule = getCachedSchedule();
+  const [dates, setDates] = useState<{ date: string; matches: Match[] }[]>(cachedSchedule?.dates ?? []);
+  const [loading, setLoading] = useState(!cachedSchedule);
   const navigate = useNavigate();
 
   useEffect(() => {
     getSchedule().then((res) => setDates(res.dates)).finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <Spin />;
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      getSchedule({ forceRefresh: true }).then((res) => setDates(res.dates)).catch(() => undefined);
+    }, QUIET_REFRESH_MS);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  if (loading) return <LoadingState text="正在加载赛程..." />;
   return (
     <div className="pageStack">
       <PageTitle title="世界杯赛程表" sub="点击比赛日查看当日对阵。已完赛日期会以绿色标注，赛程数据优先来自 SQLite 数据库。" />
@@ -195,13 +224,26 @@ function SchedulePage() {
 
 function MatchDayPage() {
   const { date } = useParams();
-  const [matches, setMatches] = useState<Match[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cachedMatches = getCachedMatches();
+  const [matches, setMatches] = useState<Match[]>(() => (cachedMatches ?? []).filter((match) => match.match_date === date));
+  const [loading, setLoading] = useState(!cachedMatches);
   const [predicting, setPredicting] = useState<string | null>(null);
   const [prediction, setPrediction] = useState<any | null>(null);
 
   useEffect(() => {
+    const cached = getCachedMatches();
+    if (cached) {
+      setMatches(cached.filter((match) => match.match_date === date));
+      setLoading(false);
+    }
     getMatches().then((items) => setMatches(items.filter((match) => match.match_date === date))).finally(() => setLoading(false));
+  }, [date]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      getMatches({ forceRefresh: true }).then((items) => setMatches(items.filter((match) => match.match_date === date))).catch(() => undefined);
+    }, QUIET_REFRESH_MS);
+    return () => window.clearInterval(timer);
   }, [date]);
 
   const handlePredict = async (matchId: string) => {
@@ -213,7 +255,7 @@ function MatchDayPage() {
     }
   };
 
-  if (loading) return <Spin />;
+  if (loading) return <LoadingState text="正在加载当天比赛..." />;
   return (
     <div className="pageStack">
       <PageTitle title={`${date} 对阵安排`} sub="已完赛场次展示数据库比分；未赛场次可手动生成模型预测。" />
@@ -266,16 +308,21 @@ function PredictionSummary({ record }: { record: any }) {
 }
 
 function TeamsPage() {
-  const [teams, setTeams] = useState<Team[]>([]);
-  const [ratings, setRatings] = useState<Record<string, Rating>>({});
+  const cachedTeams = getCachedTeams();
+  const cachedRatings = getCachedRatings();
+  const [teams, setTeams] = useState<Team[]>(cachedTeams ?? []);
+  const [ratings, setRatings] = useState<Record<string, Rating>>(cachedRatings?.team_ratings ?? {});
+  const [loading, setLoading] = useState(!cachedTeams || !cachedRatings);
   const navigate = useNavigate();
 
   useEffect(() => {
     Promise.all([getTeams(), getRatings()]).then(([teamItems, ratingRes]) => {
       setTeams(teamItems);
       setRatings(ratingRes.team_ratings ?? {});
-    });
+    }).finally(() => setLoading(false));
   }, []);
+
+  if (loading && teams.length === 0) return <LoadingState text="球队信息正在加载中..." />;
 
   return (
     <div className="pageStack">
@@ -299,14 +346,15 @@ function TeamsPage() {
 
 function TeamDetailPage() {
   const { teamId } = useParams();
-  const [teams, setTeams] = useState<Team[]>([]);
+  const cachedTeams = getCachedTeams();
+  const [teams, setTeams] = useState<Team[]>(cachedTeams ?? []);
   const team = useMemo(() => teams.find((item) => item.team_id === teamId), [teams, teamId]);
 
   useEffect(() => {
     getTeams().then(setTeams);
   }, []);
 
-  if (!team) return <Spin />;
+  if (!team) return <LoadingState text="正在加载球队信息..." />;
   return (
     <div className="pageStack">
       <PageTitle title={team.name} sub={`${team.group} 组，FIFA 排名 ${team.fifa_rank}`} />
@@ -321,10 +369,18 @@ function TeamDetailPage() {
 }
 
 function ResultsPage() {
-  const [matches, setMatches] = useState<Match[]>([]);
+  const cachedMatches = getCachedMatches();
+  const [matches, setMatches] = useState<Match[]>(cachedMatches ?? []);
 
   useEffect(() => {
     getMatches().then(setMatches);
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      getMatches({ forceRefresh: true }).then(setMatches).catch(() => undefined);
+    }, QUIET_REFRESH_MS);
+    return () => window.clearInterval(timer);
   }, []);
 
   return (

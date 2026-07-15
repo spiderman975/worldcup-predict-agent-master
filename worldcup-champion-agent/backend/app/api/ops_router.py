@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Body, Query
 
 from app.core.redis_client import redis_client
+from app.services.cache_service import cache_service
 from app.services.checkpoint_service import checkpoint_service
 from app.services.database_explorer import database_explorer
 from app.services.db_maintenance_service import db_maintenance_service
@@ -15,6 +16,25 @@ router = APIRouter(prefix="/api/ops", tags=["ops"])
 @router.get("/redis/health")
 def redis_health() -> dict:
     return redis_client.health()
+
+
+@router.get("/cache/status")
+def cache_status() -> dict:
+    return cache_service.status()
+
+
+@router.delete("/cache")
+def clear_cache(prefix: str | None = Query(default=None)) -> dict:
+    if prefix:
+        deleted = cache_service.delete_prefix(prefix)
+        return {"success": True, "prefix": prefix, "deleted": deleted, "backend": cache_service.backend()}
+    deleted = (
+        cache_service.delete_prefix("teams:")
+        + cache_service.delete_prefix("matches:")
+        + cache_service.delete_prefix("match:")
+        + cache_service.delete_prefix("postmatch:")
+    )
+    return {"success": True, "deleted": deleted, "backend": cache_service.backend()}
 
 
 @router.get("/scheduler/status")

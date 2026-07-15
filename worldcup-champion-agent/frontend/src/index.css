@@ -77,6 +77,17 @@ button {
   gap: 22px;
 }
 
+.loadingState {
+  min-height: 260px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #64748b;
+  font-weight: 700;
+}
+
 .pageTitle h1 {
   margin: 0;
   font-size: 30px;

@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Query
 from sse_starlette.sse import EventSourceResponse
 
 from app.schemas.prediction import RunCreateRequest, RunCreateResponse
+from app.services.cache_service import cache_service
 from app.services.llm_service import llm_service
 from app.services.match_reasoning_service import search_match_explanations
 from app.services.stream_service import stream_service
@@ -64,7 +65,11 @@ async def cancel_run(run_id: str) -> dict:
 
 @router.get("/ratings")
 def get_ratings() -> dict:
-    return get_team_ratings_and_odds()
+    return cache_service.remember(
+        cache_service.key("teams", "ratings"),
+        cache_service.settings.cache_ratings_ttl_seconds,
+        get_team_ratings_and_odds,
+    )
 
 
 @router.get("/llm/status")

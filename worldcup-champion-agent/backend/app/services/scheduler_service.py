@@ -60,7 +60,6 @@ class SchedulerService:
         post_match_candidates: list[str] = []
         pre_window = timedelta(minutes=self.settings.pre_match_update_minutes)
         post_offset = timedelta(hours=self.settings.post_match_result_hours)
-        scan_window = timedelta(seconds=max(60, self.settings.scheduler_poll_seconds))
 
         with redis_client.lock("prematch_scheduler_scan", ttl_seconds=max(30, self.settings.scheduler_poll_seconds)) as acquired:
             if not acquired:
@@ -83,7 +82,8 @@ class SchedulerService:
                         pre_match_updated.append(await news_collection_service.refresh_match(match, force=force))
 
                     post_result_time = match_time + post_offset
-                    should_result_update = force or post_result_time <= now <= post_result_time + scan_window
+                    has_score = match.get("actual_home_score") is not None and match.get("actual_away_score") is not None
+                    should_result_update = force or (post_result_time <= now and not has_score)
                     if should_result_update:
                         post_match_candidates.append(match["match_id"])
                         post_match_updated.append(await match_result_service.refresh_result(match, force=force))

@@ -80,6 +80,18 @@ class RedisClient:
             logger.warning("Redis delete failed: %s", exc)
             return False
 
+    def delete_prefix(self, prefix: str) -> int:
+        if not self.client:
+            return 0
+        try:
+            keys = list(self.client.scan_iter(f"{prefix}*"))
+            if not keys:
+                return 0
+            return int(self.client.delete(*keys))
+        except Exception as exc:
+            logger.warning("Redis delete_prefix failed: %s", exc)
+            return 0
+
     @contextmanager
     def lock(self, name: str, ttl_seconds: int = 60) -> Iterator[bool]:
         key = self.key("lock", name)
