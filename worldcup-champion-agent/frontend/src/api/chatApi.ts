@@ -57,6 +57,7 @@ export function connectChatStream(
     "agent_error",
     "agent_status",
     "agent_progress",
+    "source_trace",
     "system_message",
     "prediction_start",
     "phase",

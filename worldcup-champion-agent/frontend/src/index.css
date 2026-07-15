@@ -606,6 +606,95 @@ button {
   color: #b91c1c;
 }
 
+.sourceTracePanel {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid #dbe4ef;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04);
+}
+
+.sourceTraceHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: #102033;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.sourceTraceHeader > span:first-child {
+  flex: 1;
+}
+
+.sourceTraceAssessment {
+  margin: 0 0 10px;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.sourceTraceList {
+  display: grid;
+  gap: 8px;
+  max-height: 168px;
+  overflow: hidden;
+}
+
+.sourceTracePanel--expanded .sourceTraceList {
+  max-height: 420px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.sourceTraceItem {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: inherit;
+  text-decoration: none;
+}
+
+.sourceTraceItem:hover {
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.sourceTraceItem strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #102033;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.sourceTraceItem span,
+.sourceTraceItem small,
+.sourceTraceEmpty {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.sourceTraceQueries {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #e2e8f0;
+  color: #475569;
+  font-size: 12px;
+}
+
+.sourceTraceQueries strong {
+  color: #102033;
+}
+
 .inlineProgress {
   width: 100%;
   margin-top: 12px;

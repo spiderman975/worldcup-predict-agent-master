@@ -17,6 +17,30 @@ interface ReasoningStep {
   timestamp: string;
 }
 
+interface SourceTraceItem {
+  title: string;
+  source: string;
+  url: string;
+  date?: string;
+  source_type?: string;
+  credibility_score?: number;
+  credibility_label?: string;
+  cross_check_count?: number;
+  trace_note?: string;
+  summary?: string;
+}
+
+interface SourceTrace {
+  query?: string;
+  source_count?: number;
+  average_credibility?: number;
+  cross_validated_count?: number;
+  high_quality_count?: number;
+  source_tracing_queries?: string[];
+  assessment?: string;
+  sources?: SourceTraceItem[];
+}
+
 const PHASE_LABELS: Record<string, string> = {
   START: "启动",
   DATA_LOADING: "数据",
@@ -50,6 +74,8 @@ export function ChatPanel({ visible, onClose }: ChatPanelProps) {
   const [reasoningExpanded, setReasoningExpanded] = useState(false);
   const [reasoningStartedAt, setReasoningStartedAt] = useState<number | null>(null);
   const [reasoningElapsed, setReasoningElapsed] = useState(0);
+  const [sourceTrace, setSourceTrace] = useState<SourceTrace | null>(null);
+  const [sourceTraceExpanded, setSourceTraceExpanded] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
   const sourceRef = useRef<EventSource | null>(null);
   const connectedRunRef = useRef<string | null>(null);
@@ -100,6 +126,11 @@ export function ChatPanel({ visible, onClose }: ChatPanelProps) {
             }
             setThinkingText(message || "Agent 正在处理...");
             setStreaming(true);
+            return;
+          }
+          if (event === "source_trace") {
+            setSourceTrace(data as unknown as SourceTrace);
+            setSourceTraceExpanded(false);
             return;
           }
           if (event === "agent_token") {
@@ -245,6 +276,8 @@ export function ChatPanel({ visible, onClose }: ChatPanelProps) {
     setReasoningStartedAt(startedAt);
     setReasoningElapsed(0);
     setReasoningExpanded(false);
+    setSourceTrace(null);
+    setSourceTraceExpanded(false);
     setReasoningSteps([
       {
         message: "已收到问题，正在进入分析流程。",
@@ -375,6 +408,13 @@ export function ChatPanel({ visible, onClose }: ChatPanelProps) {
           </div>
         )}
         {finalAnswerMessage && renderMessage(finalAnswerMessage, messages.length - 1)}
+        {finalAnswerMessage && forceWebSearch && sourceTrace && (
+          <SourceTracePanel
+            trace={sourceTrace}
+            expanded={sourceTraceExpanded}
+            onToggle={() => setSourceTraceExpanded((value) => !value)}
+          />
+        )}
         {streaming && !(messages[messages.length - 1]?.role === "agent" && !messages[messages.length - 1]?._done) && (
           <div className="chatBubble chatBubble--agent chatBubble--thinking">
             <Spin size="small" />
@@ -414,5 +454,56 @@ export function ChatPanel({ visible, onClose }: ChatPanelProps) {
         </Space.Compact>
       </div>
     </Drawer>
+  );
+}
+
+function SourceTracePanel({
+  trace,
+  expanded,
+  onToggle,
+}: {
+  trace: SourceTrace;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  const sources = trace.sources ?? [];
+  return (
+    <div className={`sourceTracePanel ${expanded ? "sourceTracePanel--expanded" : ""}`}>
+      <div className="sourceTraceHeader">
+        <span>信息来源</span>
+        <Tag color={sources.length ? "blue" : "default"}>{sources.length} 条</Tag>
+        <Tag color={(trace.cross_validated_count ?? 0) > 0 ? "green" : "orange"}>
+          交叉验证 {trace.cross_validated_count ?? 0}
+        </Tag>
+        <Button
+          type="text"
+          size="small"
+          className="chatReasoningToggle"
+          icon={expanded ? <UpOutlined /> : <DownOutlined />}
+          onClick={onToggle}
+        >
+          {expanded ? "收起" : "展开"}
+        </Button>
+      </div>
+      <p className="sourceTraceAssessment">{trace.assessment ?? "暂无来源质量评估。"}</p>
+      <div className="sourceTraceList">
+        {sources.length === 0 && <span className="sourceTraceEmpty">本轮没有可展示的网页来源。</span>}
+        {sources.map((item, index) => (
+          <a key={`${item.url}-${index}`} className="sourceTraceItem" href={item.url} target="_blank" rel="noreferrer">
+            <div>
+              <strong>{item.title || item.source || "网页来源"}</strong>
+              <span>{item.source} · {item.credibility_label ?? "一般"} · 交叉 {item.cross_check_count ?? 1}</span>
+            </div>
+            {item.trace_note && <small>{item.trace_note}</small>}
+          </a>
+        ))}
+      </div>
+      {expanded && (trace.source_tracing_queries?.length ?? 0) > 0 && (
+        <div className="sourceTraceQueries">
+          <strong>建议追溯查询</strong>
+          {trace.source_tracing_queries?.map((query) => <span key={query}>{query}</span>)}
+        </div>
+      )}
+    </div>
   );
 }

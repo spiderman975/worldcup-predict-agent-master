@@ -12,6 +12,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 import httpx
 
@@ -253,7 +254,7 @@ class WorldCupDataScoutService:
             return []
 
         webpages = data.get("data", {}).get("webPages", {}).get("value", [])
-        results = [
+        raw_results = [
             {
                 "title": item.get("name", "N/A"),
                 "summary": item.get("summary") or item.get("snippet", ""),
@@ -265,13 +266,153 @@ class WorldCupDataScoutService:
             for item in webpages
             if item.get("url") and (item.get("summary") or item.get("snippet"))
         ]
+        results = self._enrich_web_results(query, raw_results)
         self.search_cache[cache_key] = results
         return results
 
     async def search(self, query: str, *, include_web: bool = False, top_k: int = 8) -> dict[str, Any]:
         database_results = self.search_database(query, top_k=top_k)
         web_results = await self.search_web(query, count=top_k) if include_web else []
-        return {"query": query, "database": database_results, "web": web_results}
+        return {
+            "query": query,
+            "database": database_results,
+            "web": web_results,
+            "source_trace": self.build_source_trace(query, web_results),
+        }
+
+    def build_source_trace(self, query: str, web_results: list[dict[str, Any]]) -> dict[str, Any]:
+        """Build lightweight source rating, cross-check and trace metadata for UI display."""
+
+        sources = [
+            {
+                "title": item.get("title", ""),
+                "source": item.get("source", "Web"),
+                "url": item.get("url", ""),
+                "date": item.get("date", ""),
+                "source_type": item.get("source_type", "news"),
+                "credibility_score": item.get("credibility_score", 0.5),
+                "credibility_label": item.get("credibility_label", "一般"),
+                "cross_check_count": item.get("cross_check_count", 1),
+                "trace_note": item.get("trace_note", ""),
+                "summary": item.get("summary", ""),
+            }
+            for item in web_results
+            if item.get("url")
+        ]
+        source_count = len(sources)
+        avg_score = round(sum(float(item["credibility_score"]) for item in sources) / source_count, 3) if source_count else 0
+        cross_validated = [item for item in sources if int(item.get("cross_check_count") or 0) >= 2]
+        high_quality = [item for item in sources if float(item.get("credibility_score") or 0) >= 0.75]
+        tracing_queries = self._source_tracing_queries(query, sources)
+        if not sources:
+            assessment = "本轮没有拿到可追溯网页来源。"
+        elif len(cross_validated) >= 2:
+            assessment = "本轮搜索包含多个相互印证的网页来源，可作为回答参考。"
+        elif high_quality:
+            assessment = "本轮搜索包含较高可信来源，但交叉验证数量有限。"
+        else:
+            assessment = "本轮搜索来源可信度一般，建议谨慎解读并继续核验。"
+        return {
+            "query": query,
+            "source_count": source_count,
+            "average_credibility": avg_score,
+            "cross_validated_count": len(cross_validated),
+            "high_quality_count": len(high_quality),
+            "source_tracing_queries": tracing_queries,
+            "assessment": assessment,
+            "sources": sources,
+        }
+
+    def _enrich_web_results(self, query: str, results: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        enriched: list[dict[str, Any]] = []
+        fingerprints: set[str] = set()
+        for item in results:
+            fingerprint = hashlib.md5(f"{item.get('title', '')}|{item.get('url', '')}".encode("utf-8")).hexdigest()
+            if fingerprint in fingerprints:
+                continue
+            fingerprints.add(fingerprint)
+            source_type, credibility_score = self._rate_source(item.get("source", ""), item.get("url", ""))
+            enriched.append(
+                {
+                    **item,
+                    "source_type": source_type,
+                    "credibility_score": credibility_score,
+                    "credibility_label": self._credibility_label(credibility_score),
+                    "fact_fingerprint": fingerprint,
+                }
+            )
+
+        tokens_by_result = [self._verification_tokens(f"{item.get('title', '')} {item.get('summary', '')}") for item in enriched]
+        for index, item in enumerate(enriched):
+            tokens = tokens_by_result[index]
+            cross_count = 1
+            for other_index, other_tokens in enumerate(tokens_by_result):
+                if index == other_index or not tokens or not other_tokens:
+                    continue
+                overlap = len(tokens & other_tokens) / max(len(tokens | other_tokens), 1)
+                if overlap >= 0.16:
+                    cross_count += 1
+            item["cross_check_count"] = cross_count
+            item["trace_note"] = self._trace_note(item, cross_count)
+
+        return sorted(enriched, key=lambda item: (item["credibility_score"], item["cross_check_count"]), reverse=True)
+
+    @staticmethod
+    def _rate_source(source_name: str, url: str) -> tuple[str, float]:
+        host = urlparse(url).netloc.lower()
+        label = f"{source_name} {host}".lower()
+        official_terms = ["fifa.com", "uefa.com", "the-afc.com", "conmebol", "concacaf", "thefa.com", "afa.com.ar"]
+        academic_terms = [".edu", "scholar", "researchgate", "arxiv", "doi.org"]
+        authority_media = ["reuters", "apnews", "bbc", "espn", "skysports", "theguardian", "nytimes", "theathletic"]
+        sports_data = ["transfermarkt", "sofascore", "fotmob", "whoscored", "worldfootball", "soccerway", "flashscore"]
+        social_terms = ["twitter", "x.com", "facebook", "instagram", "reddit", "tiktok", "weibo", "youtube", "blog"]
+        if any(term in label for term in official_terms):
+            return "official", 0.95
+        if any(term in label for term in academic_terms):
+            return "academic", 0.86
+        if any(term in label for term in authority_media):
+            return "authoritative_media", 0.78
+        if any(term in label for term in sports_data):
+            return "sports_database", 0.74
+        if any(term in label for term in social_terms):
+            return "self_media", 0.38
+        return "news", 0.62
+
+    @staticmethod
+    def _credibility_label(score: float) -> str:
+        if score >= 0.9:
+            return "官方/极高"
+        if score >= 0.75:
+            return "较高"
+        if score >= 0.55:
+            return "一般"
+        return "待核验"
+
+    @staticmethod
+    def _verification_tokens(text: str) -> set[str]:
+        lowered = text.casefold()
+        words = set(re.findall(r"[a-zA-Z][a-zA-Z0-9_-]{2,}|\d{1,4}", lowered))
+        stopwords = {"the", "and", "for", "with", "from", "world", "cup", "football", "soccer", "match", "news"}
+        return {word for word in words if word not in stopwords}
+
+    @staticmethod
+    def _trace_note(item: dict[str, Any], cross_count: int) -> str:
+        if cross_count >= 2:
+            return f"与 {cross_count - 1} 个来源存在关键词交叉，可作为相互印证线索。"
+        if float(item.get("credibility_score") or 0) >= 0.75:
+            return "来源评级较高，但当前搜索结果中缺少直接交叉印证。"
+        return "单一来源信息，建议结合更多网页或官方来源核验。"
+
+    @staticmethod
+    def _source_tracing_queries(query: str, sources: list[dict[str, Any]]) -> list[str]:
+        domains = []
+        for item in sources[:4]:
+            host = urlparse(str(item.get("url", ""))).netloc.replace("www.", "")
+            if host:
+                domains.append(host)
+        queries = [f"{query} official source", f"{query} final score official", f"{query} team news official"]
+        queries.extend(f"{query} site:{domain}" for domain in domains[:3])
+        return list(dict.fromkeys(queries))[:6]
 
     def _table_count(self, table: str) -> int:
         with self._connection() as connection:

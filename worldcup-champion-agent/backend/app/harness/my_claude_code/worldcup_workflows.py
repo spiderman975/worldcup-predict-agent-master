@@ -123,7 +123,15 @@ def _h_worldcup_web_search(query: str, purpose: str = "general", top_k: int = 5)
 
     search_query = f"{query} {purpose}".strip()
     web = asyncio.run(data_scout_service.search_web(search_query, count=top_k))
-    return _json({"query": search_query, "purpose": purpose, "web": web, "web_available": bool(web)})
+    return _json(
+        {
+            "query": search_query,
+            "purpose": purpose,
+            "web": web,
+            "source_trace": data_scout_service.build_source_trace(search_query, web),
+            "web_available": bool(web),
+        }
+    )
 
 
 def _h_worldcup_search_match_result(match_id: str, top_k: int = 5) -> str:
@@ -138,7 +146,16 @@ def _h_worldcup_search_match_result(match_id: str, top_k: int = 5) -> str:
         f"{match.get('match_date', '')} final score result World Cup"
     )
     web = asyncio.run(data_scout_service.search_web(query, count=top_k))
-    return _json({"found": True, "match": match, "query": query, "web": web, "web_available": bool(web)})
+    return _json(
+        {
+            "found": True,
+            "match": match,
+            "query": query,
+            "web": web,
+            "source_trace": data_scout_service.build_source_trace(query, web),
+            "web_available": bool(web),
+        }
+    )
 
 
 def _h_worldcup_get_team_database_report(team_name: str) -> str:

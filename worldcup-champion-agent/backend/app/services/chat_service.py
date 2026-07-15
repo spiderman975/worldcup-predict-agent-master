@@ -147,15 +147,29 @@ async def _build_realtime_search_context(session: ChatSession) -> str:
         return "本轮用户开启了实时搜索，但联网搜索调用失败。回答时需要明确说明无法获得实时网页结果，并优先使用数据库与已知上下文。"
 
     web_count = len(search_result.get("web", []))
+    source_trace = search_result.get("source_trace") or {}
     await session.queue.put(
         {
             "event": "agent_progress",
             "data": {
-                "message": f"实时搜索完成，获得 {web_count} 条网页结果，正在交给 harness 分析。",
+                "message": (
+                    f"实时搜索完成，获得 {web_count} 条网页结果；"
+                    f"交叉验证来源 {source_trace.get('cross_validated_count', 0)} 条，正在交给 harness 分析。"
+                ),
                 "tool": "worldcup_web_search",
                 "status": "completed",
                 "source": "chat",
                 "timestamp": _message_time(),
+            },
+        }
+    )
+    await session.queue.put(
+        {
+            "event": "source_trace",
+            "data": {
+                **source_trace,
+                "timestamp": _message_time(),
+                "enabled": True,
             },
         }
     )
