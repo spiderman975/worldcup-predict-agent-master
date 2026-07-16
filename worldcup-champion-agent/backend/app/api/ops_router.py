@@ -5,6 +5,7 @@ from app.services.cache_service import cache_service
 from app.services.checkpoint_service import checkpoint_service
 from app.services.database_explorer import database_explorer
 from app.services.db_maintenance_service import db_maintenance_service
+from app.services.live_score_sync_service import live_score_sync_service
 from app.services.match_prediction_service import get_match
 from app.services.match_result_service import match_result_service
 from app.services.scheduler_service import scheduler_service
@@ -45,6 +46,16 @@ def scheduler_status() -> dict:
 @router.post("/scheduler/scan")
 async def scheduler_scan(force: bool = Query(default=False)) -> dict:
     return await scheduler_service.scan_once(force=force)
+
+
+@router.get("/live-sync/status")
+def live_sync_status() -> dict:
+    return live_score_sync_service.status()
+
+
+@router.post("/live-sync")
+async def trigger_live_sync() -> dict:
+    return await live_score_sync_service.sync_once(force=True)
 
 
 @router.post("/matches/{match_id}/result-refresh")

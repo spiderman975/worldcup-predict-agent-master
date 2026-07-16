@@ -32,7 +32,9 @@ class FootballDataSource:
 
     def _get(self, path: str, params: dict[str, Any]) -> dict[str, Any]:
         headers = {"X-Auth-Token": self.api_key, "Accept": "application/json"}
-        with httpx.Client(timeout=self.timeout_seconds, headers=headers) as client:
+        # Do not inherit stale OS proxy variables. Local VPN/proxy tools may leave
+        # HTTP_PROXY/HTTPS_PROXY pointing at a closed 127.0.0.1 port after exit.
+        with httpx.Client(timeout=self.timeout_seconds, headers=headers, trust_env=False) as client:
             response = client.get(f"{self.base_url}{path}", params=params)
         response.raise_for_status()
         return response.json()
@@ -97,4 +99,3 @@ def _stage_number(item: dict[str, Any]) -> int:
     if "FINAL" in stage:
         return 6
     return min(max(matchday or 1, 1), 8)
-

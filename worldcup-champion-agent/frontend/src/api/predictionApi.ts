@@ -23,6 +23,7 @@ const FRONTEND_CACHE_TTL = {
   ratings: 30 * 60 * 1000,
   matches: 15 * 60 * 1000,
   schedule: 15 * 60 * 1000,
+  liveSyncStatus: 30 * 1000,
 };
 
 const frontendCache = new Map<string, CacheEntry<unknown>>();
@@ -30,6 +31,22 @@ const frontendCache = new Map<string, CacheEntry<unknown>>();
 type RunCreateResponse = {
   run_id: string;
   status: string;
+};
+
+export type LiveSyncStatus = {
+  success?: boolean;
+  enabled: boolean;
+  running: boolean;
+  configured: boolean;
+  last_sync_at?: string | null;
+  last_success_at?: string | null;
+  updated_matches: number;
+  matched_matches: number;
+  unmatched_matches: unknown[];
+  ambiguous_matches?: unknown[];
+  status: string;
+  error?: string | null;
+  message?: string | null;
 };
 
 function withBaseUrl(baseUrl: string, path: string) {
@@ -107,6 +124,7 @@ export function getCachedRatings() {
 export function clearFrontendDataCache() {
   frontendCache.delete("matches");
   frontendCache.delete("schedule");
+  frontendCache.delete("live-sync-status");
 }
 
 export async function createRun(config: { monte_carlo_runs: number; enable_realtime_search: boolean; mode?: string; knockout_round?: string }): Promise<RunCreateResponse> {
@@ -156,7 +174,7 @@ export async function getMatches(options: { forceRefresh?: boolean } = {}) {
   return rememberFrontend(
     "matches",
     FRONTEND_CACHE_TTL.matches,
-    async () => readJson<any[]>(await apiFetch("/api/matches"), "Failed to load matches"),
+    async () => readJson<any[]>(await apiFetch(`/api/matches${options.forceRefresh ? "?fresh=true" : ""}`), "Failed to load matches"),
     options.forceRefresh,
   );
 }
@@ -165,13 +183,20 @@ export async function getSchedule(options: { forceRefresh?: boolean } = {}) {
   return rememberFrontend(
     "schedule",
     FRONTEND_CACHE_TTL.schedule,
-    async () => readJson<{ dates: { date: string; matches: any[] }[] }>(await apiFetch("/api/matches/schedule"), "Failed to load schedule"),
+    async () => readJson<{ dates: { date: string; matches: any[] }[] }>(
+      await apiFetch(`/api/matches/schedule${options.forceRefresh ? "?fresh=true" : ""}`),
+      "Failed to load schedule",
+    ),
     options.forceRefresh,
   );
 }
 
-export async function predictMatch(matchId: string) {
-  const result = await readJson<any>(await apiFetch(`/api/matches/${encodeURIComponent(matchId)}/predict`, { method: "POST" }), "Failed to predict match");
+export async function predictMatch(matchId: string, options: { realtime?: boolean } = {}) {
+  const params = new URLSearchParams({ realtime: options.realtime ? "true" : "false" });
+  const result = await readJson<any>(
+    await apiFetch(`/api/matches/${encodeURIComponent(matchId)}/predict?${params.toString()}`, { method: "POST" }),
+    "Failed to predict match",
+  );
   clearFrontendDataCache();
   return result;
 }
@@ -222,6 +247,21 @@ export function prefetchCoreData() {
   void getRatings().catch(() => undefined);
   void getSchedule().catch(() => undefined);
   void getMatches().catch(() => undefined);
+}
+
+export async function getLiveSyncStatus(options: { forceRefresh?: boolean } = {}) {
+  return rememberFrontend(
+    "live-sync-status",
+    FRONTEND_CACHE_TTL.liveSyncStatus,
+    async () => readJson<LiveSyncStatus>(await apiFetch("/api/ops/live-sync/status"), "Failed to load live sync status"),
+    options.forceRefresh,
+  );
+}
+
+export async function triggerLiveSync() {
+  const result = await readJson<LiveSyncStatus>(await apiFetch("/api/ops/live-sync", { method: "POST" }), "Failed to trigger live sync");
+  clearFrontendDataCache();
+  return result;
 }
 
 export async function searchTeams(query: string) {

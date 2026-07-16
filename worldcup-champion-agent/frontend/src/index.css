@@ -150,6 +150,26 @@ button {
   backdrop-filter: blur(8px);
 }
 
+.newsCard--action {
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.newsCard--action:hover,
+.newsCard--action:focus-visible {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.36);
+  color: #fff;
+  outline: 2px solid rgba(255, 255, 255, 0.72);
+  outline-offset: 2px;
+}
+
+.newsCard--action:active {
+  transform: translateY(0);
+}
+
 .videoBand {
   min-height: 220px;
   border-radius: 8px;
@@ -229,6 +249,49 @@ button {
   background: #effcf4;
 }
 
+.dateTile--today {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.dateTile--pending {
+  border-color: #f59e0b;
+  background: #fffbeb;
+}
+
+.liveSyncBar,
+.focusPanel {
+  padding: 14px 16px;
+  border: 1px solid #dbe4ef;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.liveSyncBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  color: #475569;
+  font-size: 13px;
+}
+
+.focusPanel {
+  display: grid;
+  gap: 14px;
+}
+
+.focusPanel h2 {
+  margin: 0;
+  color: #102033;
+  font-size: 18px;
+}
+
+.matchRow--highlight {
+  border-color: #2563eb;
+  background: #f8fbff;
+}
+
 .matchList {
   display: flex;
   flex-direction: column;
@@ -269,6 +332,20 @@ button {
 .teamsLine span {
   color: #728197;
   font-size: 15px;
+}
+
+.savedPredictionLine {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.savedPredictionLine small {
+  color: #94a3b8;
 }
 
 .predictionSummary h3 {

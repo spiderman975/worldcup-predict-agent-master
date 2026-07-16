@@ -6,10 +6,10 @@ import {
   TeamOutlined,
   TrophyOutlined,
 } from "@ant-design/icons";
-import { Button, ConfigProvider, Empty, Layout, Menu, Modal, Progress, Space, Spin, Tag, theme } from "antd";
+import { Button, ConfigProvider, Empty, Layout, Menu, Modal, Progress, Space, Spin, Tag, message, theme } from "antd";
 import zhCN from "antd/locale/zh_CN";
 import { useEffect, useMemo, useState } from "react";
-import { Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
+import { Link, Navigate, Route, Routes, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import {
   getCachedMatches,
@@ -21,9 +21,13 @@ import {
   getSchedule,
   getTeamDetail,
   getTeams,
+  getLiveSyncStatus,
   connectMatchPredictionStream,
+  predictMatch,
   prefetchCoreData,
   startMatchPrediction,
+  triggerLiveSync,
+  type LiveSyncStatus,
 } from "./api/predictionApi";
 import { ChatPanel } from "./components/ChatPanel";
 
@@ -77,6 +81,16 @@ type Match = {
   status?: string;
   actual_home_score?: number | null;
   actual_away_score?: number | null;
+  saved_prediction?: {
+    predicted_home_score: number;
+    predicted_away_score: number;
+    home_win_prob: number;
+    draw_prob: number;
+    away_win_prob: number;
+    mode?: string;
+    created_at?: string;
+    explanation?: string;
+  } | null;
 };
 
 type Rating = {
@@ -120,6 +134,72 @@ function stageLabel(stage: string, stageNumber?: number) {
     third_place: "三四名决赛",
   };
   return labels[stage] ?? (stageNumber ? `第 ${stageNumber} 阶段` : stage);
+}
+
+function isUnknownTeam(value?: string) {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  return !normalized || ["tbd", "unknown", "待定"].includes(normalized);
+}
+
+function displayTeamName(value?: string) {
+  return isUnknownTeam(value) ? "待定" : value;
+}
+
+function beijingDateString(date = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+function beijingNowText() {
+  return new Date().toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", hour12: false });
+}
+
+function matchStatusText(status?: string) {
+  const labels: Record<string, string> = {
+    scheduled: "未开赛",
+    live: "进行中",
+    finished: "已完赛",
+    result_pending: "赛果待同步",
+    postponed: "延期",
+    cancelled: "取消",
+  };
+  return labels[status ?? ""] ?? "状态未知";
+}
+
+function matchStatusColor(status?: string) {
+  const colors: Record<string, string> = {
+    scheduled: "blue",
+    live: "red",
+    finished: "green",
+    result_pending: "orange",
+    postponed: "default",
+    cancelled: "red",
+  };
+  return colors[status ?? ""] ?? "default";
+}
+
+function displayScore(match: Match) {
+  if (match.status === "finished" && match.actual_home_score != null && match.actual_away_score != null) {
+    return `${match.actual_home_score}-${match.actual_away_score}`;
+  }
+  if (match.status === "result_pending") return "赛果待同步";
+  return "vs";
+}
+
+function isPredictable(match: Match) {
+  const teamsReady = !isUnknownTeam(match.home_team_name) && !isUnknownTeam(match.away_team_name);
+  return teamsReady && (match.status === "scheduled" || match.status === "live" || !match.status);
+}
+
+function isWithinPrematchWindow(match: Match, now = new Date()) {
+  const time = new Date(match.match_time).getTime();
+  if (!Number.isFinite(time)) return false;
+  const diff = time - now.getTime();
+  return diff >= 0 && diff <= 30 * 60 * 1000;
 }
 
 function Shell() {
@@ -197,6 +277,62 @@ function LoadingState({ text = "正在加载中..." }: { text?: string }) {
   );
 }
 
+function liveSyncText(status?: LiveSyncStatus | null) {
+  if (!status) return "使用本地数据库数据";
+  if (status.running) return "正在同步";
+  if (status.status === "missing_api_key") return "未配置实时比分 API";
+  if (status.status === "failed") return "最近同步失败";
+  if (status.status === "success") return "实时数据已更新";
+  return "使用本地数据库数据";
+}
+
+function LiveSyncBar({ onRefresh }: { onRefresh: () => Promise<void> }) {
+  const [status, setStatus] = useState<LiveSyncStatus | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadStatus = (forceRefresh = false) => {
+    getLiveSyncStatus({ forceRefresh }).then(setStatus).catch(() => setStatus(null));
+  };
+
+  useEffect(() => {
+    loadStatus();
+  }, []);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const result = await triggerLiveSync();
+      setStatus(result);
+      if (result.status === "missing_api_key") {
+        message.warning(result.message || "未配置实时比分 API，当前使用本地数据库数据。");
+      } else if (result.status === "failed") {
+        message.error("实时同步失败，已保留本地数据库数据。");
+      } else {
+        message.success("实时数据刷新完成。");
+      }
+      await onRefresh();
+      loadStatus(true);
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : "实时同步失败");
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  return (
+    <div className="liveSyncBar">
+      <span>北京时间：{beijingNowText()}</span>
+      <Tag color={status?.status === "success" ? "green" : status?.status === "missing_api_key" ? "orange" : "blue"}>
+        {liveSyncText(status)}
+      </Tag>
+      <span>最近成功：{status?.last_success_at ? new Date(status.last_success_at).toLocaleString("zh-CN") : "暂无"}</span>
+      <Button size="small" loading={refreshing} onClick={handleRefresh}>
+        立即刷新
+      </Button>
+    </div>
+  );
+}
+
 function HomePage() {
   return (
     <div className="pageStack">
@@ -209,9 +345,15 @@ function HomePage() {
           </p>
         </div>
         <div className="newsRail">
-          <div className="newsCard"><ReadOutlined /> 赛前 30 分钟：实时信息增强预测入口</div>
-          <div className="newsCard"><CalendarOutlined /> 手动按钮：基于历史实力执行单场预测</div>
-          <div className="newsCard"><TrophyOutlined /> 赛后视图：展示真实比分与已保存理由</div>
+          <Link className="newsCard newsCard--action" to="/schedule?view=prematch">
+            <ReadOutlined /> 赛前 30 分钟：实时信息增强预测入口
+          </Link>
+          <Link className="newsCard newsCard--action" to="/schedule?view=manual">
+            <CalendarOutlined /> 手动按钮：基于历史实力执行单场预测
+          </Link>
+          <Link className="newsCard newsCard--action" to="/results">
+            <TrophyOutlined /> 赛后视图：展示真实比分与已保存理由
+          </Link>
         </div>
       </section>
       <section className="videoBand">
@@ -228,7 +370,15 @@ function SchedulePage() {
   const cachedSchedule = getCachedSchedule();
   const [dates, setDates] = useState<{ date: string; matches: Match[] }[]>(cachedSchedule?.dates ?? []);
   const [loading, setLoading] = useState(!cachedSchedule);
+  const [predicting, setPredicting] = useState<string | null>(null);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const view = searchParams.get("view");
+
+  const refreshSchedule = async () => {
+    const res = await getSchedule({ forceRefresh: true });
+    setDates(res.dates);
+  };
 
   useEffect(() => {
     getSchedule().then((res) => setDates(res.dates)).finally(() => setLoading(false));
@@ -242,18 +392,106 @@ function SchedulePage() {
   }, []);
 
   if (loading) return <LoadingState text="正在加载赛程..." />;
+  const today = beijingDateString();
+  const allMatches = dates.flatMap((day) => day.matches);
+  const futurePredictable = allMatches
+    .filter((match) => isPredictable(match) && new Date(match.match_time).getTime() >= Date.now() - 3 * 60 * 60 * 1000)
+    .sort((a, b) => new Date(a.match_time).getTime() - new Date(b.match_time).getTime());
+  const prematchMatches = futurePredictable.filter((match) => isWithinPrematchWindow(match));
+  const nextFutureMatch = futurePredictable[0];
+  const todayMatches = dates.find((day) => day.date === today)?.matches ?? [];
+  const nextDay = dates.find((day) => day.date > today);
+
+  const handlePredict = async (match: Match, realtime: boolean) => {
+    setPredicting(match.match_id);
+    try {
+      await predictMatch(match.match_id, { realtime });
+      message.success("预测已生成并保存。");
+      await refreshSchedule();
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : "预测失败");
+    } finally {
+      setPredicting(null);
+    }
+  };
+
   return (
     <div className="pageStack">
+      <LiveSyncBar onRefresh={refreshSchedule} />
       <PageTitle title="世界杯赛程表" sub="点击比赛日查看当日对阵。已完赛日期会以绿色标注，赛程数据优先来自 SQLite 数据库。" />
+      {view === "prematch" && (
+        <section className="focusPanel">
+          <h2>赛前 30 分钟实时增强</h2>
+          {prematchMatches.length > 0 ? (
+            prematchMatches.map((match) => (
+              <div className="matchRow matchRow--highlight" key={match.match_id}>
+                <div className="matchMeta">
+                  <Tag color={matchStatusColor(match.status)}>{matchStatusText(match.status)}</Tag>
+                  <span>{formatDate(match.match_date)} {formatTime(match.match_time)}</span>
+                </div>
+                <div className="teamsLine">
+                  <strong>{displayTeamName(match.home_team_name)}</strong>
+                  <span>{displayScore(match)}</span>
+                  <strong>{displayTeamName(match.away_team_name)}</strong>
+                </div>
+                <Button type="primary" loading={predicting === match.match_id} onClick={() => handlePredict(match, true)}>
+                  实时增强预测
+                </Button>
+              </div>
+            ))
+          ) : (
+            <Empty
+              description={
+                nextFutureMatch
+                  ? `当前 30 分钟内没有即将开始的比赛。下一场：${displayTeamName(nextFutureMatch.home_team_name)} vs ${displayTeamName(nextFutureMatch.away_team_name)}`
+                  : "当前没有未来可预测比赛。"
+              }
+            />
+          )}
+        </section>
+      )}
+      {view === "manual" && (
+        <section className="focusPanel">
+          <h2>手动单场预测</h2>
+          {futurePredictable.length > 0 ? futurePredictable.slice(0, 8).map((match) => (
+            <div className="matchRow" key={match.match_id}>
+              <div className="matchMeta">
+                <Tag color={matchStatusColor(match.status)}>{matchStatusText(match.status)}</Tag>
+                <span>{formatDate(match.match_date)} {formatTime(match.match_time)}</span>
+              </div>
+              <div className="teamsLine">
+                <strong>{displayTeamName(match.home_team_name)}</strong>
+                <span>{displayScore(match)}</span>
+                <strong>{displayTeamName(match.away_team_name)}</strong>
+              </div>
+              <Button loading={predicting === match.match_id} onClick={() => handlePredict(match, false)}>
+                预测比分
+              </Button>
+            </div>
+          )) : <Empty description="当前没有可手动预测的未来比赛。" />}
+        </section>
+      )}
+      {todayMatches.length === 0 && nextDay && (
+        <div className="focusPanel">
+          <span>今天没有世界杯比赛。下一比赛日是 {formatDate(nextDay.date)}，共有 {nextDay.matches.length} 场。</span>
+          <Button size="small" onClick={() => navigate(`/schedule/${nextDay.date}`)}>查看下一比赛日</Button>
+        </div>
+      )}
       <div className="calendarGrid">
         {dates.map((day) => {
           const finished = day.matches.length > 0 && day.matches.every((match) => match.status === "finished");
           const finishedCount = day.matches.filter((match) => match.status === "finished").length;
+          const pending = day.matches.some((match) => match.status === "result_pending");
+          const isToday = day.date === today;
           return (
-            <button key={day.date} className={`dateTile ${finished ? "dateTile--finished" : ""}`} onClick={() => navigate(`/schedule/${day.date}`)}>
+            <button
+              key={day.date}
+              className={`dateTile ${finished ? "dateTile--finished" : ""} ${pending ? "dateTile--pending" : ""} ${isToday ? "dateTile--today" : ""}`}
+              onClick={() => navigate(`/schedule/${day.date}`)}
+            >
               <span>{formatDate(day.date)}</span>
               <strong>{day.matches.length} 场</strong>
-              <small>{finished ? "已完赛" : `${finishedCount} 场已完赛`}</small>
+              <small>{pending ? "赛果待同步" : finished ? "已完赛" : `${finishedCount} 场已完赛`}</small>
             </button>
           );
         })}
@@ -354,18 +592,22 @@ function MatchDayPage() {
         {matches.map((match) => (
           <div className="matchRow" key={match.match_id}>
             <div className="matchMeta">
-              <Tag>{match.match_id}</Tag>
+              <Tag color={matchStatusColor(match.status)}>{matchStatusText(match.status)}</Tag>
               <Tag color="blue">{stageLabel(match.stage, match.stage_number)}</Tag>
               <span>{formatTime(match.match_time)}</span>
               {match.venue && <span>{match.venue}</span>}
             </div>
             <div className="teamsLine">
-              <strong>{match.home_team_name}</strong>
-              <span>{match.status === "finished" ? `${match.actual_home_score}-${match.actual_away_score}` : "vs"}</span>
-              <strong>{match.away_team_name}</strong>
+              <strong>{displayTeamName(match.home_team_name)}</strong>
+              <span>{displayScore(match)}</span>
+              <strong>{displayTeamName(match.away_team_name)}</strong>
             </div>
             {match.status === "finished" ? (
               <Tag color="green">已完赛 {match.actual_home_score}-{match.actual_away_score}</Tag>
+            ) : match.status === "result_pending" ? (
+              <Tag color="orange">赛果待同步</Tag>
+            ) : !isPredictable(match) ? (
+              <Tag color="default">对阵待定</Tag>
             ) : (
               <Button type="primary" loading={predicting === match.match_id} onClick={() => handlePredict(match.match_id)}>
                 预测比赛结果
@@ -397,7 +639,7 @@ function PredictionSummary({ record }: { record: any }) {
   const analysis = String(record.analysis ?? pred.explanation ?? record.explanation?.text ?? "暂无原因分析。");
   return (
     <div className="predictionSummary">
-      <h3>{record.match.home_team_name} vs {record.match.away_team_name}</h3>
+      <h3>{displayTeamName(record.match.home_team_name)} vs {displayTeamName(record.match.away_team_name)}</h3>
       <div className="scoreLine">{pred.predicted_home_score} - {pred.predicted_away_score}</div>
       <div className="predictionAnalysis">
         {analysis.split(/\n{2,}/).map((block, index) => {
@@ -567,6 +809,10 @@ function ResultsPage() {
   const cachedMatches = getCachedMatches();
   const [matches, setMatches] = useState<Match[]>(cachedMatches ?? []);
 
+  const refreshMatches = async () => {
+    setMatches(await getMatches({ forceRefresh: true }));
+  };
+
   useEffect(() => {
     getMatches().then(setMatches);
   }, []);
@@ -580,19 +826,30 @@ function ResultsPage() {
 
   return (
     <div className="pageStack">
-      <PageTitle title="比赛结果概览" sub="已完赛显示数据库真实比分；未赛比赛可通过赛程页或 Chat Agent 生成并保存预测。" />
+      <LiveSyncBar onRefresh={refreshMatches} />
+      <PageTitle title="比赛结果概览" sub="已完赛显示数据库真实比分；赛果待同步的比赛可通过实时刷新或后台调度更新。" />
       <div className="matchList">
         {matches.map((match) => (
           <div className="matchRow" key={match.match_id}>
             <div className="matchMeta">
-              <Tag>{match.match_id}</Tag>
+              <Tag color={matchStatusColor(match.status)}>{matchStatusText(match.status)}</Tag>
+              <Tag>{stageLabel(match.stage, match.stage_number)}</Tag>
               <span>{match.match_date}</span>
             </div>
             <div className="teamsLine">
-              <strong>{match.home_team_name}</strong>
-              <span>{match.status === "finished" ? `${match.actual_home_score}-${match.actual_away_score}` : "未赛"}</span>
-              <strong>{match.away_team_name}</strong>
+              <strong>{displayTeamName(match.home_team_name)}</strong>
+              <span>{displayScore(match)}</span>
+              <strong>{displayTeamName(match.away_team_name)}</strong>
             </div>
+            {match.saved_prediction && (
+              <div className="savedPredictionLine">
+                <Tag color="blue">已保存预测</Tag>
+                <span>
+                  预测 {match.saved_prediction.predicted_home_score}-{match.saved_prediction.predicted_away_score}
+                </span>
+                {match.saved_prediction.created_at && <small>{new Date(match.saved_prediction.created_at).toLocaleString("zh-CN")}</small>}
+              </div>
+            )}
           </div>
         ))}
       </div>

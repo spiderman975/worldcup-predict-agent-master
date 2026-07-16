@@ -184,7 +184,7 @@ class MatchResultService:
         if third_home and third_away:
             MatchResultService._upsert_future_match(
                 connection,
-                match_id=f"s5_{MatchResultService._slug(third_home)}_{MatchResultService._slug(third_away)}",
+                match_id="s5_third_place",
                 stage=5,
                 home_team=third_home,
                 away_team=third_away,
@@ -193,7 +193,7 @@ class MatchResultService:
         if final_home and final_away:
             MatchResultService._upsert_future_match(
                 connection,
-                match_id=f"s6_{MatchResultService._slug(final_home)}_{MatchResultService._slug(final_away)}",
+                match_id="s6_final",
                 stage=6,
                 home_team=final_home,
                 away_team=final_away,

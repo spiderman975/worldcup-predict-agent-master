@@ -74,6 +74,7 @@ def _parse_match_time(value: str | None, index: int | None = None) -> datetime:
 
 
 GROUP_STAGE_MATCH_COUNT = 72
+UNKNOWN_TEAM = "TBD"
 
 
 def _db_stage_name(stage: int, stage_one_index: int | None = None) -> str:
@@ -85,8 +86,8 @@ def _db_stage_name(stage: int, stage_one_index: int | None = None) -> str:
         2: "round_of_16",
         3: "quarter",
         4: "semi",
-        5: "final",
-        6: "third_place",
+        5: "third_place",
+        6: "final",
     }.get(stage, str(stage))
 
 
@@ -95,9 +96,10 @@ def _list_database_schedule() -> list[dict[str, Any]]:
 
     data_scout_service.ensure_database()
     with data_scout_service._connection() as connection:
+        _ensure_terminal_fixtures(connection)
         rows = connection.execute(
             """
-            SELECT match_id, stage, home_team, away_team, home_score, away_score, is_real, played_at
+            SELECT match_id, stage, home_team, away_team, home_score, away_score, is_real, played_at, status
             FROM matches
             ORDER BY played_at IS NULL, played_at, id
             """
@@ -116,9 +118,12 @@ def _list_database_schedule() -> list[dict[str, Any]]:
         finished = bool(row["is_real"]) and home_score >= 0 and away_score >= 0
         home_name = str(row["home_team"])
         away_name = str(row["away_team"])
+        external_status = str(row["status"] or "").strip().lower()
+        base_status = "finished" if finished else _display_status(external_status, played_at)
+        match_id = str(row["match_id"])
         schedule.append(
             {
-                "match_id": str(row["match_id"]),
+                "match_id": match_id,
                 "stage": _db_stage_name(stage_number, stage_one_seen if stage_number == 1 else None),
                 "stage_number": stage_number,
                 "group": None,
@@ -130,13 +135,89 @@ def _list_database_schedule() -> list[dict[str, Any]]:
                 "match_time": played_at.isoformat(),
                 "match_date": played_at.date().isoformat(),
                 "venue": "TBD",
-                "status": "finished" if finished else "scheduled",
+                "status": base_status,
+                "source_status": external_status or None,
                 "actual_home_score": home_score if home_score >= 0 else None,
                 "actual_away_score": away_score if away_score >= 0 else None,
                 "is_database_match": True,
+                "saved_prediction": _saved_prediction_summary(match_id),
             }
         )
     return schedule
+
+
+def _ensure_terminal_fixtures(connection: Any) -> None:
+    """Keep fixed late-knockout slots visible even before both teams are known."""
+
+    rows = connection.execute(
+        """
+        SELECT match_id, home_team, away_team, home_score, away_score, is_real
+        FROM matches
+        WHERE match_id IN ('s4_france_spain', 's4_england_argentina')
+        """
+    ).fetchall()
+    semis = {row["match_id"]: row for row in rows}
+
+    def winner(match_id: str) -> str:
+        row = semis.get(match_id)
+        if not row or not row["is_real"] or row["home_score"] == row["away_score"]:
+            return UNKNOWN_TEAM
+        return row["home_team"] if row["home_score"] > row["away_score"] else row["away_team"]
+
+    def loser(match_id: str) -> str:
+        row = semis.get(match_id)
+        if not row or not row["is_real"] or row["home_score"] == row["away_score"]:
+            return UNKNOWN_TEAM
+        return row["away_team"] if row["home_score"] > row["away_score"] else row["home_team"]
+
+    _upsert_terminal_fixture(
+        connection,
+        match_id="s5_third_place",
+        stage=5,
+        home_team=loser("s4_france_spain"),
+        away_team=loser("s4_england_argentina"),
+        played_at="2026-07-18T21:00:00Z",
+    )
+    _upsert_terminal_fixture(
+        connection,
+        match_id="s6_final",
+        stage=6,
+        home_team=winner("s4_france_spain"),
+        away_team=winner("s4_england_argentina"),
+        played_at="2026-07-19T19:00:00Z",
+    )
+
+
+def _upsert_terminal_fixture(
+    connection: Any,
+    *,
+    match_id: str,
+    stage: int,
+    home_team: str,
+    away_team: str,
+    played_at: str,
+) -> None:
+    connection.execute(
+        """
+        INSERT INTO matches (match_id, stage, home_team, away_team, home_score, away_score, is_real, played_at, status)
+        VALUES (?, ?, ?, ?, -1, -1, 0, ?, 'scheduled')
+        ON CONFLICT(match_id) DO UPDATE SET
+            stage = excluded.stage,
+            home_team = CASE
+                WHEN matches.is_real = 0 AND matches.home_team = ? THEN excluded.home_team
+                WHEN matches.is_real = 0 AND excluded.home_team <> ? THEN excluded.home_team
+                ELSE matches.home_team
+            END,
+            away_team = CASE
+                WHEN matches.is_real = 0 AND matches.away_team = ? THEN excluded.away_team
+                WHEN matches.is_real = 0 AND excluded.away_team <> ? THEN excluded.away_team
+                ELSE matches.away_team
+            END,
+            played_at = excluded.played_at,
+            status = CASE WHEN matches.is_real = 0 THEN excluded.status ELSE matches.status END
+        """,
+        (match_id, stage, home_team, away_team, played_at, UNKNOWN_TEAM, UNKNOWN_TEAM, UNKNOWN_TEAM, UNKNOWN_TEAM),
+    )
 
 
 def normalize_match(match: dict[str, Any], index: int | None = None) -> dict[str, Any]:
@@ -181,6 +262,36 @@ def _save_store(store: dict[str, Any]) -> None:
 
 def get_saved_match_prediction(match_id: str) -> dict[str, Any] | None:
     return _load_store().get(match_id.upper())
+
+
+def _saved_prediction_summary(match_id: str) -> dict[str, Any] | None:
+    record = get_saved_match_prediction(match_id)
+    if not record:
+        return None
+    prediction = record.get("prediction") or {}
+    return {
+        "predicted_home_score": prediction.get("predicted_home_score"),
+        "predicted_away_score": prediction.get("predicted_away_score"),
+        "home_win_prob": prediction.get("home_win_prob"),
+        "draw_prob": prediction.get("draw_prob"),
+        "away_win_prob": prediction.get("away_win_prob"),
+        "mode": record.get("mode"),
+        "created_at": record.get("created_at"),
+        "explanation": record.get("analysis") or prediction.get("explanation") or (record.get("explanation") or {}).get("text"),
+    }
+
+
+def _display_status(source_status: str, match_time: datetime) -> str:
+    if source_status in {"postponed", "suspended"}:
+        return "postponed"
+    if source_status in {"cancelled", "canceled"}:
+        return "cancelled"
+    now = datetime.now(BEIJING_TZ).replace(tzinfo=None)
+    if match_time <= now < match_time + timedelta(hours=3):
+        return "live"
+    if now >= match_time + timedelta(hours=3):
+        return "result_pending"
+    return "scheduled"
 
 
 def _normalize_text(text: str) -> str:

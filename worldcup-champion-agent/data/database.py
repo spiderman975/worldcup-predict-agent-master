@@ -164,6 +164,10 @@ def init_db() -> None:
             CREATE INDEX IF NOT EXISTS idx_maintenance_action_time ON db_maintenance_log(action, created_at);
             """
         )
+        match_columns = {row["name"] for row in connection.execute("PRAGMA table_info(matches)").fetchall()}
+        if "status" not in match_columns:
+            connection.execute("ALTER TABLE matches ADD COLUMN status TEXT DEFAULT ''")
+        connection.execute("CREATE INDEX IF NOT EXISTS idx_matches_external_status ON matches(status, played_at)")
 
 
 def get_all_teams() -> list[Team]:

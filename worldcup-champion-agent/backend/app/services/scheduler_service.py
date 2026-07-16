@@ -10,6 +10,7 @@ from zoneinfo import ZoneInfo
 
 from app.core.config import get_settings
 from app.core.redis_client import redis_client
+from app.services.live_score_sync_service import live_score_sync_service
 from app.services.match_result_service import match_result_service
 from app.services.match_prediction_service import list_schedule
 from app.services.news_collection_service import news_collection_service
@@ -60,6 +61,7 @@ class SchedulerService:
         post_match_candidates: list[str] = []
         pre_window = timedelta(minutes=self.settings.pre_match_update_minutes)
         post_offset = timedelta(hours=self.settings.post_match_result_hours)
+        live_sync_result: dict[str, Any] | None = None
 
         with redis_client.lock("prematch_scheduler_scan", ttl_seconds=max(30, self.settings.scheduler_poll_seconds)) as acquired:
             if not acquired:
@@ -73,6 +75,11 @@ class SchedulerService:
                     "post_match_candidates": [],
                     "post_match_updated": [],
                 }
+            try:
+                live_sync_result = await live_score_sync_service.sync_once(force=force)
+            except Exception as exc:
+                logger.exception("Live score sync failed inside scheduler: %s", exc)
+                live_sync_result = {"success": False, "status": "failed", "error": str(exc)}
             for match in list_schedule():
                 match_time = datetime.fromisoformat(match["match_time"])
                 if match.get("status") != "finished":
@@ -93,6 +100,7 @@ class SchedulerService:
             "now_beijing": now.isoformat(),
             "pre_match_window_minutes": self.settings.pre_match_update_minutes,
             "post_match_result_hours": self.settings.post_match_result_hours,
+            "live_score_sync": live_sync_result,
             "pre_match_candidates": pre_match_candidates,
             "pre_match_updated": pre_match_updated,
             "post_match_candidates": post_match_candidates,
