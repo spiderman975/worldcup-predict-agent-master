@@ -2,8 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Button, Drawer, Input, Space, Spin, Tag } from "antd";
 import { CloseOutlined, DownOutlined, MessageOutlined, SendOutlined, UpOutlined } from "@ant-design/icons";
 
-import { connectChatStream, createChatSession, sendChatMessage, startChatPrediction, type ChatMessage } from "../api/chatApi";
-import { usePredictionStore } from "../stores/predictionStore";
+import { connectChatStream, createChatSession, sendChatMessage, type ChatMessage } from "../api/chatApi";
 
 interface ChatPanelProps {
   visible: boolean;
@@ -83,7 +82,6 @@ export function ChatPanel({ visible, onClose }: ChatPanelProps) {
   const [sourceTraceExpanded, setSourceTraceExpanded] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
   const sourceRef = useRef<EventSource | null>(null);
-  const connectedRunRef = useRef<string | null>(null);
 
   const openSession = useCallback(async () => {
     if (sessionId || initializing) return;
@@ -199,13 +197,6 @@ export function ChatPanel({ visible, onClose }: ChatPanelProps) {
             return;
           }
           const nested = (data.data ?? {}) as Record<string, unknown>;
-          const runId = data.run_id ?? nested.run_id;
-          if (event === "prediction_start" && runId && connectedRunRef.current !== runId) {
-            connectedRunRef.current = String(runId);
-            const store = usePredictionStore.getState();
-            store.reset();
-            store.connectStream(String(runId));
-          }
           if (
             event.startsWith("prediction_") ||
             event === "data_loaded" ||
@@ -300,30 +291,6 @@ export function ChatPanel({ visible, onClose }: ChatPanelProps) {
       setStreaming(false);
     }
   }, [inputValue, sessionId, streaming, initializing, forceWebSearch]);
-
-  const handleStartPrediction = useCallback(async () => {
-    if (!sessionId || streaming || initializing) return;
-    const startedAt = Date.now();
-    setReasoningStartedAt(startedAt);
-    setReasoningElapsed(0);
-    setReasoningExpanded(false);
-    setReasoningSteps([
-      {
-        message: "已触发预测流程，正在准备任务。",
-        stage: "prediction",
-        status: "running",
-        timestamp: new Date(startedAt).toISOString(),
-      },
-    ]);
-    setThinkingText("Agent 正在启动预测工作流...");
-    setStreaming(true);
-    try {
-      await startChatPrediction(sessionId, 1000);
-    } catch {
-      setMessages((prev) => [...prev, { role: "system", content: "启动完整冠军预测失败", timestamp: new Date().toISOString() }]);
-      setStreaming(false);
-    }
-  }, [sessionId, streaming, initializing]);
 
   const inputDisabled = streaming || initializing || !sessionId;
   const lastMessage = messages[messages.length - 1];
@@ -437,9 +404,6 @@ export function ChatPanel({ visible, onClose }: ChatPanelProps) {
           disabled={initializing || !sessionId}
         >
           {forceWebSearch ? "实时搜索：开" : "开启实时搜索"}
-        </Button>
-        <Button size="small" onClick={handleStartPrediction} disabled={inputDisabled}>
-          启动完整冠军预测
         </Button>
       </div>
       <div className="chatInputArea">

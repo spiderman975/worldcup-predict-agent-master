@@ -62,6 +62,7 @@ class Settings:
         self.scheduler_poll_seconds = int(os.getenv("SCHEDULER_POLL_SECONDS", "300"))
         self.pre_match_update_minutes = int(os.getenv("PRE_MATCH_UPDATE_MINUTES", "30"))
         self.pre_match_include_web = os.getenv("PRE_MATCH_INCLUDE_WEB", "false").strip().lower() in {"1", "true", "yes", "on"}
+        self.pre_match_auto_predict = os.getenv("PRE_MATCH_AUTO_PREDICT", "true").strip().lower() in {"1", "true", "yes", "on"}
         self.post_match_result_hours = int(os.getenv("POST_MATCH_RESULT_HOURS", "3"))
         self.post_match_include_web = os.getenv("POST_MATCH_INCLUDE_WEB", "true").strip().lower() in {"1", "true", "yes", "on"}
 

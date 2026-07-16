@@ -1,8 +1,9 @@
 import {
+  ApartmentOutlined,
   CalendarOutlined,
   HomeOutlined,
   MessageOutlined,
-  ReadOutlined,
+  OrderedListOutlined,
   TeamOutlined,
   TrophyOutlined,
 } from "@ant-design/icons";
@@ -136,6 +137,32 @@ function stageLabel(stage: string, stageNumber?: number) {
   return labels[stage] ?? (stageNumber ? `第 ${stageNumber} 阶段` : stage);
 }
 
+function compactStageLabel(stage: string, stageNumber?: number) {
+  const labels: Record<string, string> = {
+    group: "小组赛",
+    round_of_32: "1/16决赛",
+    round_of_16: "1/8决赛",
+    quarter: "1/4决赛",
+    semi: "半决赛",
+    third_place: "三四名决赛",
+    final: "决赛",
+  };
+  return labels[stage] ?? (stageNumber ? `第 ${stageNumber} 阶段` : stage);
+}
+
+function dateStageLabels(matches: Match[]) {
+  const seen = new Set<string>();
+  const labels: string[] = [];
+  matches.forEach((match) => {
+    const label = compactStageLabel(match.stage, match.stage_number);
+    if (!seen.has(label)) {
+      seen.add(label);
+      labels.push(label);
+    }
+  });
+  return labels;
+}
+
 function isUnknownTeam(value?: string) {
   const normalized = String(value ?? "").trim().toLowerCase();
   return !normalized || ["tbd", "unknown", "待定"].includes(normalized);
@@ -202,6 +229,120 @@ function isWithinPrematchWindow(match: Match, now = new Date()) {
   return diff >= 0 && diff <= 30 * 60 * 1000;
 }
 
+type GroupStandingRow = {
+  team: Team;
+  played: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  goalDiff: number;
+  points: number;
+};
+
+const KNOCKOUT_STAGES = ["round_of_32", "round_of_16", "quarter", "semi", "final", "third_place"];
+const KNOCKOUT_EXPECTED_COUNTS: Record<string, number> = {
+  round_of_32: 16,
+  round_of_16: 8,
+  quarter: 4,
+  semi: 2,
+  final: 1,
+  third_place: 1,
+};
+
+function compareStandings(a: GroupStandingRow, b: GroupStandingRow) {
+  return (
+    b.points - a.points ||
+    b.goalDiff - a.goalDiff ||
+    b.goalsFor - a.goalsFor ||
+    a.goalsAgainst - b.goalsAgainst ||
+    a.team.name.localeCompare(b.team.name)
+  );
+}
+
+function isFinishedWithScore(match: Match) {
+  return match.status === "finished" && match.actual_home_score != null && match.actual_away_score != null;
+}
+
+function buildGroupStandings(teams: Team[], matches: Match[]) {
+  const rows = new Map<string, GroupStandingRow>();
+  teams.forEach((team) => {
+    rows.set(team.team_id, {
+      team,
+      played: 0,
+      wins: 0,
+      draws: 0,
+      losses: 0,
+      goalsFor: 0,
+      goalsAgainst: 0,
+      goalDiff: 0,
+      points: 0,
+    });
+  });
+
+  matches
+    .filter((match) => match.stage === "group" && isFinishedWithScore(match))
+    .forEach((match) => {
+      const home = rows.get(match.home_team_id);
+      const away = rows.get(match.away_team_id);
+      if (!home || !away) return;
+      const homeScore = match.actual_home_score ?? 0;
+      const awayScore = match.actual_away_score ?? 0;
+
+      home.played += 1;
+      away.played += 1;
+      home.goalsFor += homeScore;
+      home.goalsAgainst += awayScore;
+      away.goalsFor += awayScore;
+      away.goalsAgainst += homeScore;
+
+      if (homeScore > awayScore) {
+        home.wins += 1;
+        home.points += 3;
+        away.losses += 1;
+      } else if (homeScore < awayScore) {
+        away.wins += 1;
+        away.points += 3;
+        home.losses += 1;
+      } else {
+        home.draws += 1;
+        away.draws += 1;
+        home.points += 1;
+        away.points += 1;
+      }
+
+      home.goalDiff = home.goalsFor - home.goalsAgainst;
+      away.goalDiff = away.goalsFor - away.goalsAgainst;
+    });
+
+  const groups = Array.from(rows.values()).reduce<Record<string, GroupStandingRow[]>>((acc, row) => {
+    const group = row.team.group || "未分组";
+    acc[group] = acc[group] ?? [];
+    acc[group].push(row);
+    return acc;
+  }, {});
+
+  Object.keys(groups).forEach((group) => groups[group].sort(compareStandings));
+  const thirdPlaces = Object.values(groups)
+    .map((groupRows) => groupRows[2])
+    .filter(Boolean)
+    .sort(compareStandings);
+
+  return { groups, thirdPlaces };
+}
+
+function sortMatchesByTime(matches: Match[]) {
+  return [...matches].sort((a, b) => new Date(a.match_time).getTime() - new Date(b.match_time).getTime());
+}
+
+function knockoutMatchesByStage(matches: Match[]) {
+  return KNOCKOUT_STAGES.reduce<Record<string, Match[]>>((acc, stage) => {
+    acc[stage] = sortMatchesByTime(matches.filter((match) => match.stage === stage));
+    return acc;
+  }, {});
+}
+
 function Shell() {
   const location = useLocation();
   const [chatVisible, setChatVisible] = useState(false);
@@ -227,6 +368,8 @@ function Shell() {
             { key: "/home", icon: <HomeOutlined />, label: <Link to="/home">主页</Link> },
             { key: "/schedule", icon: <CalendarOutlined />, label: <Link to="/schedule">世界杯赛程表</Link> },
             { key: "/teams", icon: <TeamOutlined />, label: <Link to="/teams">球队信息</Link> },
+            { key: "/groups", icon: <OrderedListOutlined />, label: <Link to="/groups">小组赛分组及排名</Link> },
+            { key: "/knockout", icon: <ApartmentOutlined />, label: <Link to="/knockout">淘汰赛晋级树</Link> },
             { key: "/results", icon: <TrophyOutlined />, label: <Link to="/results">比赛结果概览</Link> },
           ]}
         />
@@ -239,6 +382,8 @@ function Shell() {
           <Route path="/schedule/:date" element={<MatchDayPage />} />
           <Route path="/teams" element={<TeamsPage />} />
           <Route path="/teams/:teamId" element={<TeamDetailPage />} />
+          <Route path="/groups" element={<GroupStandingsPage />} />
+          <Route path="/knockout" element={<KnockoutBracketPage />} />
           <Route path="/results" element={<ResultsPage />} />
         </Routes>
       </Layout.Content>
@@ -337,30 +482,26 @@ function HomePage() {
   return (
     <div className="pageStack">
       <section className="homeHero">
-        <div>
-          <Tag color="blue">2026 database schedule</Tag>
-          <h1>世界杯比赛预测主系统</h1>
+        <div className="homeHeroContent">
+          <span className="homeEyebrow">WorldCup Agent</span>
+          <h1>世界杯赛程驱动的单场预测系统</h1>
           <p>
-            以数据库赛程为轴组织赛程、球队与单场预测。Chat Agent 负责理解你的问题，并在需要时启动单场多 Agent 工作流。
+            一个陪你实时追随世界杯的系统。聚合赛程、球队阵容、实时新闻与数据库比分，围绕每一场比赛完成预测、赛果同步、积分排名和淘汰赛路径更新。
           </p>
+          <div className="homeStats">
+            <span>赛前预测</span>
+            <span>赛后同步</span>
+            <span>实时搜索</span>
+            <span>Harness 协作</span>
+          </div>
         </div>
-        <div className="newsRail">
-          <Link className="newsCard newsCard--action" to="/schedule?view=prematch">
-            <ReadOutlined /> 赛前 30 分钟：实时信息增强预测入口
-          </Link>
-          <Link className="newsCard newsCard--action" to="/schedule?view=manual">
-            <CalendarOutlined /> 手动按钮：基于历史实力执行单场预测
-          </Link>
-          <Link className="newsCard newsCard--action" to="/results">
-            <TrophyOutlined /> 赛后视图：展示真实比分与已保存理由
-          </Link>
+        <div className="homeHeroPanel">
+          <strong>World Cup</strong>
+          <span>从赛程到预测，从比分到晋级。</span>
         </div>
       </section>
       <section className="videoBand">
-        <div className="videoMock">
-          <div className="videoPulse" />
-          <span>World Cup live board</span>
-        </div>
+        <video className="homeVideo" src="/assets/home-worldcup.mp4" controls muted loop playsInline preload="metadata" />
       </section>
     </div>
   );
@@ -482,7 +623,8 @@ function SchedulePage() {
           const finished = day.matches.length > 0 && day.matches.every((match) => match.status === "finished");
           const finishedCount = day.matches.filter((match) => match.status === "finished").length;
           const pending = day.matches.some((match) => match.status === "result_pending");
-          const isToday = day.date === today;
+          const isToday = day.date === today && !finished && !pending;
+          const stageLabels = dateStageLabels(day.matches);
           return (
             <button
               key={day.date}
@@ -490,6 +632,11 @@ function SchedulePage() {
               onClick={() => navigate(`/schedule/${day.date}`)}
             >
               <span>{formatDate(day.date)}</span>
+              <div className="dateTileStages">
+                {stageLabels.map((label) => (
+                  <span key={label}>{label}</span>
+                ))}
+              </div>
               <strong>{day.matches.length} 场</strong>
               <small>{pending ? "赛果待同步" : finished ? "已完赛" : `${finishedCount} 场已完赛`}</small>
             </button>
@@ -801,6 +948,229 @@ function PlayerCard({ player, showStarter = false }: { player: TeamPlayer; showS
         <span>防守 {player.defense}</span>
       </div>
       {player.injured && player.injury_description && <small>{player.injury_description}</small>}
+    </div>
+  );
+}
+
+function GroupStandingsPage() {
+  const cachedTeams = getCachedTeams();
+  const cachedMatches = getCachedMatches();
+  const [teams, setTeams] = useState<Team[]>(cachedTeams ?? []);
+  const [matches, setMatches] = useState<Match[]>(cachedMatches ?? []);
+  const [loading, setLoading] = useState(!cachedTeams || !cachedMatches);
+
+  const refreshData = async (forceRefresh = false) => {
+    const [teamItems, matchItems] = await Promise.all([getTeams(), getMatches({ forceRefresh })]);
+    setTeams(teamItems);
+    setMatches(matchItems);
+  };
+
+  useEffect(() => {
+    refreshData().finally(() => setLoading(false));
+    const timer = window.setInterval(() => {
+      refreshData(true).catch(() => undefined);
+    }, QUIET_REFRESH_MS);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const standings = useMemo(() => buildGroupStandings(teams, matches), [teams, matches]);
+  const groupNames = Object.keys(standings.groups).sort((a, b) => a.localeCompare(b));
+
+  if (loading && teams.length === 0) return <LoadingState text="正在加载小组排名..." />;
+
+  return (
+    <div className="pageStack">
+      <LiveSyncBar onRefresh={() => refreshData(true)} />
+      <PageTitle
+        title="小组赛分组及排名"
+        sub="根据数据库中的小组赛真实比分自动计算积分、净胜球和小组第三排名；赛果同步后会随静默刷新更新。"
+      />
+      <div className="standingsLayout">
+        {groupNames.map((group) => (
+          <section className="standingPanel" key={group}>
+            <div className="standingPanelHeader">
+              <h2>{group} 组</h2>
+              <Tag color="blue">{standings.groups[group].filter((row) => row.played > 0).length} 队已有赛果</Tag>
+            </div>
+            <StandingsTable rows={standings.groups[group]} />
+          </section>
+        ))}
+      </div>
+      <section className="standingPanel">
+        <div className="standingPanelHeader">
+          <h2>小组第三排名</h2>
+          <Tag color="purple">晋级参考</Tag>
+        </div>
+        <StandingsTable rows={standings.thirdPlaces} showGroup thirdPlaceRanking />
+      </section>
+    </div>
+  );
+}
+
+function StandingsTable({
+  rows,
+  showGroup = false,
+  thirdPlaceRanking = false,
+}: {
+  rows: GroupStandingRow[];
+  showGroup?: boolean;
+  thirdPlaceRanking?: boolean;
+}) {
+  return (
+    <div className="standingsTableWrap">
+      <table className={`standingsTable ${thirdPlaceRanking ? "standingsTable--thirdPlace" : ""}`}>
+        <thead>
+          <tr>
+            <th>排名</th>
+            {showGroup && <th>小组</th>}
+            <th>球队</th>
+            <th>赛</th>
+            <th>胜</th>
+            <th>平</th>
+            <th>负</th>
+            <th>进/失</th>
+            <th>净胜</th>
+            <th>积分</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, index) => (
+            <tr key={row.team.team_id}>
+              <td>{index + 1}</td>
+              {showGroup && <td>{row.team.group || "-"}</td>}
+              <td className="standingTeam">{row.team.name}</td>
+              <td>{row.played}</td>
+              <td>{row.wins}</td>
+              <td>{row.draws}</td>
+              <td>{row.losses}</td>
+              <td>{row.goalsFor}/{row.goalsAgainst}</td>
+              <td>{row.goalDiff > 0 ? `+${row.goalDiff}` : row.goalDiff}</td>
+              <td className="standingPoints">{row.points}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function KnockoutBracketPage() {
+  const cachedMatches = getCachedMatches();
+  const [matches, setMatches] = useState<Match[]>(cachedMatches ?? []);
+  const [loading, setLoading] = useState(!cachedMatches);
+  const [activeStage, setActiveStage] = useState("round_of_32");
+
+  const refreshMatches = async (forceRefresh = false) => {
+    setMatches(await getMatches({ forceRefresh }));
+  };
+
+  useEffect(() => {
+    refreshMatches().finally(() => setLoading(false));
+    const timer = window.setInterval(() => {
+      refreshMatches(true).catch(() => undefined);
+    }, QUIET_REFRESH_MS);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const byStage = useMemo(() => knockoutMatchesByStage(matches), [matches]);
+  const stageTabs = ["round_of_32", "round_of_16", "quarter", "semi", "third_place", "final"];
+
+  if (loading && matches.length === 0) return <LoadingState text="正在加载淘汰赛晋级树..." />;
+
+  return (
+    <div className="pageStack pageStack--wide">
+      <LiveSyncBar onRefresh={() => refreshMatches(true)} />
+      <PageTitle
+        title="淘汰赛晋级树状图"
+        sub="按阶段切换查看独立对阵图，已完赛节点显示真实比分；未确定对阵保留待定节点，并随赛果同步更新。"
+      />
+      <div className="knockoutStageTabs">
+        {stageTabs.map((stage) => (
+          <Button key={stage} type={activeStage === stage ? "primary" : "default"} onClick={() => setActiveStage(stage)}>
+            {stageLabel(stage)}
+          </Button>
+        ))}
+      </div>
+      <StageBracket stage={activeStage} matches={byStage[activeStage] ?? []} />
+    </div>
+  );
+}
+
+function StageBracket({ stage, matches }: { stage: string; matches: Match[] }) {
+  const expected = KNOCKOUT_EXPECTED_COUNTS[stage] ?? matches.length;
+  const slots = Array.from({ length: expected }, (_, index) => matches[index] ?? null);
+  const leftSlots = slots.slice(0, Math.ceil(slots.length / 2));
+  const rightSlots = slots.slice(Math.ceil(slots.length / 2));
+  const completedCount = matches.filter(isFinishedWithScore).length;
+
+  if (expected <= 1) {
+    return (
+      <div className="stageBracketCanvas stageBracketCanvas--single">
+        <div className="stageBracketTitle">
+          <strong>{stageLabel(stage)}</strong>
+          <span>{completedCount}/{expected} 场已完赛</span>
+        </div>
+        <div className="stageBracketSingleNode">
+          <BracketMatchNode match={slots[0] ?? null} index={0} />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="stageBracketCanvas">
+      <div className="stageBracketSide">
+        {leftSlots.map((match, index) => (
+          <BracketMatchNode key={match?.match_id ?? `${stage}-left-${index}`} match={match} index={index} />
+        ))}
+      </div>
+      <div className="stageBracketCenter">
+        <span className="stageBracketLine" />
+        <div className="stageBracketTitle">
+          <strong>{stageLabel(stage)}</strong>
+          <span>{completedCount}/{expected} 场已完赛</span>
+        </div>
+        <span className="stageBracketLine" />
+      </div>
+      <div className="stageBracketSide stageBracketSide--right">
+        {rightSlots.map((match, index) => (
+          <BracketMatchNode key={match?.match_id ?? `${stage}-right-${index}`} match={match} index={leftSlots.length + index} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function BracketMatchNode({ match, index }: { match: Match | null; index: number }) {
+  if (!match) {
+    return (
+      <div className="bracketNode bracketNode--placeholder">
+        <div className="bracketNodeMeta">
+          <Tag>未确定</Tag>
+          <span>第 {index + 1} 场</span>
+        </div>
+        <div className="bracketTeams">
+          <strong>待定</strong>
+          <span>vs</span>
+          <strong>待定</strong>
+        </div>
+        <small>还未比赛</small>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`bracketNode ${match.status === "finished" ? "bracketNode--finished" : ""}`}>
+      <div className="bracketNodeMeta">
+        <Tag color={matchStatusColor(match.status)}>{matchStatusText(match.status)}</Tag>
+        <span>{formatDate(match.match_date)} {formatTime(match.match_time)}</span>
+      </div>
+      <div className="bracketTeams">
+        <strong>{displayTeamName(match.home_team_name)}</strong>
+        <span className="bracketScore">{displayScore(match)}</span>
+        <strong>{displayTeamName(match.away_team_name)}</strong>
+      </div>
+      <small>{match.venue || "比赛场地待定"}</small>
     </div>
   );
 }

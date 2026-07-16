@@ -101,24 +101,40 @@ button {
 }
 
 .homeHero {
-  min-height: 360px;
+  min-height: 340px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
-  gap: 28px;
-  align-items: end;
-  padding: 42px;
+  grid-template-columns: minmax(0, 1fr) 250px;
+  gap: 26px;
+  align-items: center;
+  padding: 46px;
   border-radius: 8px;
   color: #fff;
   background:
-    linear-gradient(90deg, rgba(7, 18, 34, 0.88), rgba(7, 18, 34, 0.36)),
+    linear-gradient(90deg, rgba(7, 18, 34, 0.92), rgba(14, 49, 86, 0.52)),
     url("https://images.unsplash.com/photo-1522778119026-d647f0596c20?auto=format&fit=crop&w=1600&q=80");
   background-size: cover;
   background-position: center;
 }
 
+.homeHeroContent {
+  max-width: 760px;
+}
+
+.homeEyebrow {
+  display: inline-flex;
+  padding: 5px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #dbeafe;
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .homeHero h1 {
-  margin: 18px 0 12px;
-  font-size: 48px;
+  margin: 18px 0 14px;
+  max-width: 720px;
+  font-size: 46px;
   line-height: 1.08;
   letter-spacing: 0;
 }
@@ -129,6 +145,48 @@ button {
   color: #d8e4f0;
   font-size: 16px;
   line-height: 1.8;
+}
+
+.homeStats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.homeStats span {
+  padding: 7px 11px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #edf5ff;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.homeHeroPanel {
+  min-height: 118px;
+  padding: 18px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.38);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.24);
+}
+
+.homeHeroPanel strong {
+  color: #fff;
+  font-size: 30px;
+  line-height: 1.05;
+}
+
+.homeHeroPanel span {
+  margin-top: 10px;
+  color: #d8e4f0;
+  font-size: 14px;
+  line-height: 1.6;
 }
 
 .newsRail {
@@ -171,12 +229,22 @@ button {
 }
 
 .videoBand {
-  min-height: 220px;
+  min-height: 360px;
   border-radius: 8px;
-  background: #ffffffcc;
+  background: #071222;
   border: 1px solid #dbe4ef;
   display: grid;
   place-items: center;
+  overflow: hidden;
+}
+
+.homeVideo {
+  width: 100%;
+  max-height: 560px;
+  aspect-ratio: 16 / 7;
+  display: block;
+  object-fit: cover;
+  background: #071222;
 }
 
 .videoMock {
@@ -240,6 +308,33 @@ button {
   font-size: 24px;
 }
 
+.dateTileStages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-height: 24px;
+}
+
+.dateTileStages span {
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+}
+
+.dateTile--finished .dateTileStages span {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.dateTile--pending .dateTileStages span {
+  background: #fef3c7;
+  color: #b45309;
+}
+
 .dateTile small {
   color: #64748b;
 }
@@ -257,6 +352,11 @@ button {
 .dateTile--pending {
   border-color: #f59e0b;
   background: #fffbeb;
+}
+
+.dateTile--finished.dateTile--today {
+  border-color: #22c55e;
+  background: #effcf4;
 }
 
 .liveSyncBar,
@@ -848,6 +948,395 @@ button {
   font-size: 12px;
 }
 
+.pageStack--wide {
+  max-width: none;
+}
+
+.standingsLayout {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 16px;
+}
+
+.standingPanel {
+  padding: 16px;
+  border: 1px solid #dbe4ef;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.standingPanelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.standingPanelHeader h2 {
+  margin: 0;
+  color: #102033;
+  font-size: 18px;
+}
+
+.standingsTableWrap {
+  overflow-x: auto;
+}
+
+.standingsTable {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 640px;
+  color: #334155;
+  font-size: 13px;
+}
+
+.standingsTable th,
+.standingsTable td {
+  padding: 10px 8px;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.standingsTable th {
+  color: #64748b;
+  font-weight: 700;
+  background: #f8fafc;
+}
+
+.standingsTable tbody tr:nth-child(-n + 2) {
+  background: #f0fdf4;
+}
+
+.standingsTable tbody tr:nth-child(3) {
+  background: #eff6ff;
+}
+
+.standingsTable--thirdPlace tbody tr:nth-child(-n + 8) {
+  background: #f0fdf4;
+}
+
+.standingsTable--thirdPlace tbody tr:nth-child(n + 9) {
+  background: transparent;
+}
+
+.standingTeam {
+  text-align: left !important;
+  color: #102033;
+  font-weight: 700;
+}
+
+.standingPoints {
+  color: #2563eb;
+  font-weight: 800;
+}
+
+.knockoutStageTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid #dbe4ef;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.stageBracketCanvas {
+  display: grid;
+  grid-template-columns: minmax(360px, 1fr) 210px minmax(360px, 1fr);
+  gap: 26px;
+  align-items: center;
+  min-height: 660px;
+  padding: 28px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #1d4ed8, #172554);
+  color: #fff;
+  overflow-x: auto;
+}
+
+.stageBracketCanvas--single {
+  grid-template-columns: 1fr;
+  justify-items: center;
+  min-height: 420px;
+  gap: 22px;
+}
+
+.stageBracketSide {
+  display: grid;
+  gap: 16px;
+}
+
+.stageBracketSide--right {
+  direction: rtl;
+}
+
+.stageBracketSide--right .bracketNode {
+  direction: ltr;
+}
+
+.stageBracketCanvas .bracketNode {
+  width: 100%;
+  max-width: 360px;
+  min-height: 76px;
+  justify-self: end;
+}
+
+.stageBracketSide--right .bracketNode {
+  justify-self: start;
+}
+
+.stageBracketCenter {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 10px;
+  align-items: center;
+}
+
+.stageBracketLine {
+  height: 2px;
+  min-width: 42px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.stageBracketTitle {
+  min-width: 150px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  text-align: center;
+}
+
+.stageBracketTitle strong {
+  display: block;
+  color: #fff;
+  font-size: 18px;
+}
+
+.stageBracketTitle span {
+  display: block;
+  margin-top: 5px;
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 12px;
+}
+
+.stageBracketSingleNode {
+  width: min(420px, 92%);
+}
+
+.stageBracketSingleNode .bracketNode {
+  max-width: none;
+  min-height: 98px;
+}
+
+.knockoutBracket {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 190px minmax(0, 1fr);
+  gap: 18px;
+  align-items: center;
+  min-width: 1420px;
+  padding: 22px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #1d4ed8, #172554);
+  overflow: hidden;
+  color: #fff;
+}
+
+.bracketHalf {
+  display: grid;
+  grid-template-columns: 150px 140px 128px 118px;
+  gap: 18px;
+  align-items: center;
+  position: relative;
+}
+
+.bracketHalf--right {
+  direction: rtl;
+}
+
+.bracketHalf--right .bracketRound,
+.bracketHalf--right .bracketNode {
+  direction: ltr;
+}
+
+.bracketHalf--right .bracketRound--round_of_16 {
+  transform: translateY(16px);
+}
+
+.bracketHalf--right .bracketRound--quarter {
+  transform: translateY(48px);
+}
+
+.bracketHalf--right .bracketRound--semi {
+  transform: translateY(96px);
+}
+
+.bracketFinals {
+  display: grid;
+  gap: 24px;
+  align-content: center;
+  position: relative;
+  z-index: 2;
+}
+
+.bracketRound {
+  min-width: 0;
+}
+
+.bracketRound h2 {
+  margin: 0 0 9px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.bracketNodes {
+  display: grid;
+  gap: 7px;
+  position: relative;
+}
+
+.bracketRound--round_of_32 .bracketNodes {
+  gap: 7px;
+}
+
+.bracketRound--round_of_16 .bracketNodes {
+  gap: 76px;
+}
+
+.bracketRound--quarter .bracketNodes {
+  gap: 244px;
+}
+
+.bracketRound--semi .bracketNodes {
+  gap: 0;
+}
+
+.bracketRound--round_of_16 {
+  transform: translateY(36px);
+}
+
+.bracketRound--quarter {
+  transform: translateY(116px);
+}
+
+.bracketRound--semi {
+  transform: translateY(274px);
+}
+
+.bracketFinals .bracketRound--final {
+  transform: translateY(186px);
+}
+
+.bracketFinals .bracketRound--third_place {
+  transform: translateY(206px);
+}
+
+.bracketNode {
+  position: relative;
+  min-height: 58px;
+  padding: 7px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  justify-content: space-between;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.2);
+}
+
+.bracketHalf:not(.bracketHalf--right) .bracketNode::after,
+.bracketHalf--right .bracketNode::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 18px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.bracketHalf:not(.bracketHalf--right) .bracketNode::after {
+  left: 100%;
+}
+
+.bracketHalf--right .bracketNode::before {
+  right: 100%;
+}
+
+.bracketRound--final .bracketNode,
+.bracketRound--third_place .bracketNode {
+  min-height: 72px;
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.bracketNode--finished {
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+
+.bracketNode--placeholder {
+  border-style: dashed;
+  background: rgba(248, 250, 252, 0.9);
+}
+
+.bracketNodeMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  color: #64748b;
+  font-size: 10px;
+}
+
+.bracketNodeMeta .ant-tag {
+  margin-inline-end: 0;
+  font-size: 10px;
+  line-height: 16px;
+  padding: 0 4px;
+}
+
+.bracketTeams {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 5px;
+  align-items: center;
+  color: #102033;
+  font-size: 12px;
+}
+
+.bracketTeams strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bracketTeams strong:last-child {
+  text-align: right;
+}
+
+.bracketScore {
+  min-width: 30px;
+  padding: 1px 5px;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-weight: 800;
+  text-align: center;
+  font-size: 11px;
+}
+
+.bracketNode small {
+  color: #64748b;
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 @media (max-width: 900px) {
   .sideNav {
     display: none;
@@ -868,5 +1357,44 @@ button {
 
   .matchRow {
     grid-template-columns: 1fr;
+  }
+
+  .standingsLayout,
+  .knockoutBracket,
+  .bracketHalf,
+  .stageBracketCanvas,
+  .stageBracketCenter {
+    grid-template-columns: 1fr;
+  }
+
+  .bracketHalf--right {
+    direction: ltr;
+  }
+
+  .stageBracketCanvas {
+    min-height: auto;
+    padding: 18px;
+  }
+
+  .stageBracketSide--right {
+    direction: ltr;
+  }
+
+  .stageBracketCanvas .bracketNode,
+  .stageBracketSide--right .bracketNode {
+    max-width: none;
+    justify-self: stretch;
+  }
+
+  .stageBracketLine {
+    display: none;
+  }
+
+  .bracketRound--round_of_16,
+  .bracketRound--quarter,
+  .bracketRound--semi,
+  .bracketFinals .bracketRound--final,
+  .bracketFinals .bracketRound--third_place {
+    transform: none;
   }
 }

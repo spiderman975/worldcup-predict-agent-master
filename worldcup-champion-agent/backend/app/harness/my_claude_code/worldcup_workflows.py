@@ -112,13 +112,13 @@ def _h_worldcup_predict_match_workflow(match_id: str, realtime: bool = False) ->
     return _json(run_prediction_sync(match_id, realtime=realtime))
 
 
-def _h_worldcup_search_database(query: str, include_web: bool = False, top_k: int = 8) -> str:
+def _h_worldcup_search_database(query: str, include_web: bool = False, top_k: int = 20) -> str:
     from app.services.data_scout_service import data_scout_service
 
     return _json(asyncio.run(data_scout_service.search(query, include_web=include_web, top_k=top_k)))
 
 
-def _h_worldcup_web_search(query: str, purpose: str = "general", top_k: int = 8) -> str:
+def _h_worldcup_web_search(query: str, purpose: str = "general", top_k: int = 20) -> str:
     from app.services.data_scout_service import data_scout_service
 
     search_query = f"{query} {purpose}".strip()
@@ -134,7 +134,7 @@ def _h_worldcup_web_search(query: str, purpose: str = "general", top_k: int = 8)
     )
 
 
-def _h_worldcup_search_match_result(match_id: str, top_k: int = 8) -> str:
+def _h_worldcup_search_match_result(match_id: str, top_k: int = 20) -> str:
     from app.services.match_prediction_service import get_match
     from app.services.data_scout_service import data_scout_service
 
@@ -300,7 +300,7 @@ def ensure_registered() -> None:
                     "properties": {
                         "query": {"type": "string", "description": "搜索关键词。"},
                         "include_web": {"type": "boolean", "description": "是否同时联网搜索，默认 false。"},
-                        "top_k": {"type": "integer", "description": "返回条数，默认 8。"},
+                        "top_k": {"type": "integer", "description": "返回条数，默认 20。"},
                     },
                     "required": ["query"],
                 },
@@ -320,7 +320,7 @@ def ensure_registered() -> None:
                     "properties": {
                         "query": {"type": "string", "description": "网页搜索关键词。"},
                         "purpose": {"type": "string", "description": "搜索目的，例如 news、injury、lineup、odds、result。"},
-                        "top_k": {"type": "integer", "description": "返回条数，默认 5。"},
+                        "top_k": {"type": "integer", "description": "返回条数，默认 20。"},
                     },
                     "required": ["query"],
                 },
@@ -339,7 +339,7 @@ def ensure_registered() -> None:
                     "type": "object",
                     "properties": {
                         "match_id": {"type": "string", "description": "比赛 ID。"},
-                        "top_k": {"type": "integer", "description": "返回条数，默认 5。"},
+                        "top_k": {"type": "integer", "description": "返回条数，默认 20。"},
                     },
                     "required": ["match_id"],
                 },

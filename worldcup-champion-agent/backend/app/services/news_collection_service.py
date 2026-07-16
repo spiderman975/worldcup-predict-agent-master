@@ -38,7 +38,7 @@ class NewsCollectionService:
             result = await data_scout_service.search(
                 query,
                 include_web=bool(self.settings.pre_match_include_web),
-                top_k=10,
+                top_k=20,
             )
             record = {
                 "match_id": match["match_id"],

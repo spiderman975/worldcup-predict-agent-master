@@ -1,3 +1,4 @@
+import re
 from typing import Any
 
 
@@ -107,6 +108,7 @@ class CriticAgent:
         cross_count = int(source_trace.get("cross_validated_count") or 0)
         high_quality_count = int(source_trace.get("high_quality_count") or 0)
         trace_queries = source_trace.get("source_tracing_queries") or []
+        timeliness = source_trace.get("timeliness") or {}
 
         if source_count == 0:
             warnings.append("本轮缺少可追溯来源，只能作为离线或本地数据判断。")
@@ -118,6 +120,14 @@ class CriticAgent:
             warnings.append("未发现高可信来源，建议优先追溯官方、权威媒体或体育数据站。")
         if source_count > 0 and not trace_queries:
             warnings.append("缺少来源追溯查询，后续难以定位原始出处。")
+        if timeliness.get("requires_recent") and not timeliness.get("passed"):
+            status = timeliness.get("status") or "unknown"
+            dated = int(timeliness.get("dated_source_count") or 0)
+            within_7d = int(timeliness.get("within_7d_count") or 0)
+            warnings.append(
+                f"时效性审核未完全通过（{status}）：近期比赛/最新信息问题需要优先参考近 7 天来源；"
+                f"当前可识别日期来源 {dated} 条，近 7 天来源 {within_7d} 条。"
+            )
 
         checks.extend(
             [
@@ -125,6 +135,12 @@ class CriticAgent:
                 {"name": "source_credibility", "passed": source_count == 0 or avg_score >= 0.55 or avg_score == 0, "severity": "major"},
                 {"name": "cross_verification", "passed": source_count < 2 or cross_count > 0, "severity": "major"},
                 {"name": "source_traceability", "passed": source_count == 0 or bool(trace_queries), "severity": "minor"},
+                {
+                    "name": "source_timeliness",
+                    "passed": not timeliness.get("requires_recent") or bool(timeliness.get("passed")),
+                    "severity": "major",
+                    "detail": timeliness,
+                },
             ]
         )
         return {
@@ -136,13 +152,24 @@ class CriticAgent:
             "quality_score": self._quality_score(errors, warnings),
         }
 
-    def review_answer(self, answer: str, source_trace: dict[str, Any] | None, *, force_web_search: bool = False) -> dict[str, Any]:
+    def review_answer(
+        self,
+        answer: str,
+        source_trace: dict[str, Any] | None,
+        *,
+        force_web_search: bool = False,
+        search_result: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """审核 Chat 最终回答是否与搜索模式和来源质量匹配。"""
 
         source_review = self.review_sources(source_trace)
         warnings = list(source_review["warnings"])
         errors = list(source_review["errors"])
         checks = list(source_review["checks"])
+        database_alignment = self.review_database_answer_alignment(answer, search_result)
+        warnings.extend(database_alignment["warnings"])
+        errors.extend(database_alignment["errors"])
+        checks.extend(database_alignment["checks"])
         if force_web_search and not (source_trace or {}).get("source_count"):
             warnings.append("用户开启了实时搜索，但最终回答没有可展示网页来源。")
         if force_web_search and "未获得可用网页结果" not in answer and not (source_trace or {}).get("source_count"):
@@ -158,6 +185,108 @@ class CriticAgent:
             "checks": checks,
             "quality_score": self._quality_score(errors, warnings),
         }
+
+    def review_database_answer_alignment(self, answer: str, search_result: dict[str, Any] | None) -> dict[str, Any]:
+        """审核最终输出是否覆盖数据库命中的高优先级比赛事实，并检查网页补充是否与数据库冲突。"""
+
+        warnings: list[str] = []
+        errors: list[str] = []
+        checks: list[dict[str, Any]] = []
+        facts = self._database_match_facts(search_result)
+        missing = [fact for fact in facts[:3] if not self._answer_mentions_fact(answer, fact)]
+        conflicts = self._database_web_conflicts(facts, search_result)
+        if missing:
+            errors.append(
+                "最终回答遗漏数据库命中的关键比赛事实："
+                + "；".join(f"{item['home']} {item['score']} {item['away']}" for item in missing[:3])
+            )
+        if conflicts:
+            warnings.append(
+                "发现网页搜索结果与数据库比分可能不一致，回答应以数据库为准："
+                + "；".join(conflicts[:3])
+            )
+        checks.append(
+            {
+                "name": "answer_database_alignment",
+                "passed": not missing,
+                "severity": "critical",
+                "database_fact_count": len(facts),
+                "missing_count": len(missing),
+            }
+        )
+        checks.append(
+            {
+                "name": "database_web_consistency",
+                "passed": not conflicts,
+                "severity": "major",
+                "conflict_count": len(conflicts),
+            }
+        )
+        return {"warnings": warnings, "errors": errors, "checks": checks}
+
+    @staticmethod
+    def _database_match_facts(search_result: dict[str, Any] | None) -> list[dict[str, str]]:
+        if not search_result:
+            return []
+        facts: list[dict[str, str]] = []
+        for item in search_result.get("database") or []:
+            title = str(item.get("title") or "")
+            summary = str(item.get("summary") or "")
+            url = str(item.get("url") or "")
+            if "local://matches/" not in url and "最近比赛" not in title and "比赛" not in title:
+                continue
+            match = re.search(r"([A-Za-z][A-Za-z .'-]+?)\s+vs\s+([A-Za-z][A-Za-z .'-]+?)(?:，|,|$)", summary)
+            score_match = re.search(r"比分[:：]\s*(\d{1,2})-(\d{1,2})", summary)
+            if not match or not score_match:
+                continue
+            facts.append(
+                {
+                    "home": " ".join(match.group(1).split()),
+                    "away": " ".join(match.group(2).split()),
+                    "score": f"{score_match.group(1)}-{score_match.group(2)}",
+                    "summary": summary,
+                }
+            )
+        unique: list[dict[str, str]] = []
+        seen: set[tuple[str, str, str]] = set()
+        for fact in facts:
+            key = (fact["home"], fact["away"], fact["score"])
+            if key not in seen:
+                seen.add(key)
+                unique.append(fact)
+        return unique
+
+    @staticmethod
+    def _answer_mentions_fact(answer: str, fact: dict[str, str]) -> bool:
+        compact = re.sub(r"\s+", "", answer.casefold())
+        home = re.sub(r"\s+", "", fact["home"].casefold())
+        away = re.sub(r"\s+", "", fact["away"].casefold())
+        score = fact["score"]
+        reverse_score = "-".join(reversed(score.split("-"))) if "-" in score else score
+        return home in compact and away in compact and (score in answer or reverse_score in answer)
+
+    @staticmethod
+    def _database_web_conflicts(facts: list[dict[str, str]], search_result: dict[str, Any] | None) -> list[str]:
+        if not search_result:
+            return []
+        web_items = search_result.get("web") or []
+        conflicts: list[str] = []
+        for fact in facts[:5]:
+            home = fact["home"].casefold()
+            away = fact["away"].casefold()
+            expected = fact["score"]
+            reverse_expected = "-".join(reversed(expected.split("-"))) if "-" in expected else expected
+            for item in web_items:
+                haystack = f"{item.get('title', '')} {item.get('summary', '')}".casefold()
+                if home not in haystack or away not in haystack:
+                    continue
+                scores = re.findall(r"\b(\d{1,2})\s*[-:]\s*(\d{1,2})\b", haystack)
+                for left, right in scores[:3]:
+                    found = f"{left}-{right}"
+                    if found not in {expected, reverse_expected}:
+                        conflicts.append(f"{fact['home']} vs {fact['away']} 数据库 {expected}，网页疑似 {found}")
+                        break
+        return list(dict.fromkeys(conflicts))
 
     @staticmethod
     def _quality_score(errors: list[str], warnings: list[str]) -> int:

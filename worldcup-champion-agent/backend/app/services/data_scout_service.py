@@ -10,6 +10,7 @@ import re
 import sqlite3
 import sys
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -20,6 +21,52 @@ from app.core.config import get_settings
 
 
 logger = logging.getLogger(__name__)
+DEFAULT_WEB_RESULT_COUNT = 20
+
+TEAM_QUERY_ALIASES = {
+    "阿根廷": "Argentina",
+    "英格兰": "England",
+    "法国": "France",
+    "西班牙": "Spain",
+    "巴西": "Brazil",
+    "德国": "Germany",
+    "葡萄牙": "Portugal",
+    "荷兰": "Netherlands",
+    "比利时": "Belgium",
+    "瑞士": "Switzerland",
+    "挪威": "Norway",
+    "摩洛哥": "Morocco",
+    "埃及": "Egypt",
+    "墨西哥": "Mexico",
+    "美国": "United States",
+}
+
+CHINESE_NUMBERS = {
+    "一": 1,
+    "二": 2,
+    "两": 2,
+    "三": 3,
+    "四": 4,
+    "五": 5,
+    "六": 6,
+    "七": 7,
+    "八": 8,
+    "九": 9,
+    "十": 10,
+}
+
+ENGLISH_NUMBERS = {
+    "one": 1,
+    "two": 2,
+    "three": 3,
+    "four": 4,
+    "five": 5,
+    "six": 6,
+    "seven": 7,
+    "eight": 8,
+    "nine": 9,
+    "ten": 10,
+}
 
 
 class WorldCupDataError(RuntimeError):
@@ -192,13 +239,109 @@ class WorldCupDataScoutService:
             "database_match": self._find_match(home_name, away_name, str(match.get("match_id", ""))),
         }
 
+    def _query_terms(self, query: str) -> list[str]:
+        terms = [part.casefold() for part in query.split() if part.strip()]
+        lowered = query.casefold()
+        for alias, canonical in TEAM_QUERY_ALIASES.items():
+            if alias in query:
+                terms.extend([alias.casefold(), canonical.casefold()])
+        for row in self._all_team_rows():
+            name = str(row["name"])
+            if name.casefold() in lowered:
+                terms.append(name.casefold())
+        return list(dict.fromkeys(term for term in terms if term))
+
+    def _team_names_from_query(self, query: str) -> list[str]:
+        lowered = query.casefold()
+        matches: list[str] = []
+        for alias, canonical in TEAM_QUERY_ALIASES.items():
+            if alias in query:
+                matches.append(canonical)
+        for row in self._all_team_rows():
+            name = str(row["name"])
+            if name.casefold() in lowered:
+                matches.append(name)
+        return list(dict.fromkeys(matches))
+
+    @staticmethod
+    def _recent_match_limit(query: str) -> int | None:
+        patterns = [
+            r"(?:近|最近)\s*(\d+)\s*场",
+            r"(?:近|最近)\s*([一二两三四五六七八九十])\s*场",
+            r"last\s+(\d+)\s+matches?",
+            r"recent\s+(\d+)\s+matches?",
+            r"last\s+(one|two|three|four|five|six|seven|eight|nine|ten)\s+matches?",
+            r"recent\s+(one|two|three|four|five|six|seven|eight|nine|ten)\s+matches?",
+        ]
+        lowered = query.casefold()
+        for pattern in patterns:
+            match = re.search(pattern, lowered)
+            if not match:
+                continue
+            raw = match.group(1)
+            value = int(raw) if raw.isdigit() else CHINESE_NUMBERS.get(raw) or ENGLISH_NUMBERS.get(raw)
+            if value:
+                return max(1, min(value, 10))
+        if any(term in lowered for term in ("近况", "最近比赛", "recent matches", "last matches")):
+            return 5
+        return None
+
+    def _recent_match_results(self, query: str) -> list[ScoutSearchResult]:
+        limit = self._recent_match_limit(query)
+        team_names = self._team_names_from_query(query)
+        if not limit or not team_names:
+            return []
+
+        include_future = self._query_asks_future_matches(query)
+        rows = self._all_match_rows()
+        results: list[ScoutSearchResult] = []
+        for team_name in team_names:
+            team_rows = [
+                row for row in rows
+                if str(row["home_team"]).casefold() == team_name.casefold()
+                or str(row["away_team"]).casefold() == team_name.casefold()
+            ]
+            if not include_future:
+                completed_rows = [
+                    row for row in team_rows
+                    if bool(row["is_real"]) and int(row["home_score"]) >= 0 and int(row["away_score"]) >= 0
+                ]
+                if completed_rows:
+                    team_rows = completed_rows
+            team_rows.sort(key=lambda row: str(row.get("played_at") or ""), reverse=True)
+            for index, row in enumerate(team_rows[:limit], start=1):
+                is_real = bool(row["is_real"])
+                home_score = row["home_score"]
+                away_score = row["away_score"]
+                status = "已完赛" if is_real else "未完赛/待赛"
+                score = f"{home_score}-{away_score}" if is_real and home_score >= 0 and away_score >= 0 else "暂无比分"
+                results.append(
+                    ScoutSearchResult(
+                        title=f"{team_name} 最近比赛 {index}：{row['home_team']} vs {row['away_team']}",
+                        summary=(
+                            f"{row['played_at']}，阶段 {row['stage']}，{row['home_team']} vs {row['away_team']}，"
+                            f"状态：{status}，比分：{score}。"
+                        ),
+                        source="SQLite matches",
+                        url=f"local://matches/{row['match_id']}",
+                        score=100 - index,
+                    )
+                )
+        return results
+
+    @staticmethod
+    def _query_asks_future_matches(query: str) -> bool:
+        lowered = query.casefold()
+        future_terms = ("下一场", "未来", "即将", "未赛", "赛程", "安排", "next", "upcoming", "future", "scheduled")
+        return any(term in lowered for term in future_terms)
+
     def search_database(self, query: str, top_k: int = 8) -> list[dict[str, Any]]:
         self.ensure_database()
-        terms = [part.casefold() for part in query.split() if part.strip()]
+        terms = self._query_terms(query)
         if not terms:
             return []
 
-        results: list[ScoutSearchResult] = []
+        results: list[ScoutSearchResult] = self._recent_match_results(query)
         for row in self._all_team_rows():
             haystack = " ".join(str(value or "") for value in row.values()).casefold()
             score = self._score(haystack, terms)
@@ -254,7 +397,7 @@ class WorldCupDataScoutService:
 
         return [item.as_dict() for item in sorted(results, key=lambda item: item.score, reverse=True)[:top_k]]
 
-    async def search_web(self, query: str, count: int = 8) -> list[dict[str, Any]]:
+    async def search_web(self, query: str, count: int = DEFAULT_WEB_RESULT_COUNT) -> list[dict[str, Any]]:
         settings = get_settings()
         api_key = getattr(settings, "bocha_api_key", None)
         if not api_key:
@@ -264,7 +407,7 @@ class WorldCupDataScoutService:
             return []
 
         freshness = self._web_freshness(query)
-        target_count = max(8, min(count, 12))
+        target_count = max(DEFAULT_WEB_RESULT_COUNT, min(count, 30))
         cache_key = hashlib.md5(f"{query}|{target_count}|{freshness}|trusted-first".encode("utf-8")).hexdigest()
         if cache_key in self.search_cache:
             return self.search_cache[cache_key]
@@ -276,7 +419,7 @@ class WorldCupDataScoutService:
                 for trusted_query in self._trusted_site_queries(query):
                     try:
                         raw_results.extend(
-                            await self._fetch_web_search(client, headers, trusted_query, count=3, freshness=freshness, preferred=True)
+                            await self._fetch_web_search(client, headers, trusted_query, count=4, freshness=freshness, preferred=True)
                         )
                     except Exception as exc:
                         logger.debug("高可信站点定向搜索失败，继续其他来源：%s", exc)
@@ -328,7 +471,7 @@ class WorldCupDataScoutService:
         domains = self.HISTORICAL_FOOTBALL_DOMAINS if self._web_freshness(query) == "noLimit" else self.TRUSTED_FOOTBALL_DOMAINS
         return [f"{query} site:{domain}" for domain in domains[:5]]
 
-    async def search(self, query: str, *, include_web: bool = False, top_k: int = 8) -> dict[str, Any]:
+    async def search(self, query: str, *, include_web: bool = False, top_k: int = DEFAULT_WEB_RESULT_COUNT) -> dict[str, Any]:
         database_results = self.search_database(query, top_k=top_k)
         web_results = await self.search_web(query, count=top_k) if include_web else []
         return {
@@ -355,6 +498,36 @@ class WorldCupDataScoutService:
         lowered = query.casefold()
         if any(term in lowered for term in historical_terms):
             return "noLimit"
+        recent_terms = (
+            "今天",
+            "今日",
+            "现在",
+            "刚刚",
+            "最新",
+            "近期",
+            "实时",
+            "赛前",
+            "赛后",
+            "比赛安排",
+            "预测",
+            "阵容",
+            "伤停",
+            "首发",
+            "today",
+            "latest",
+            "recent",
+            "current",
+            "live",
+            "preview",
+            "lineup",
+            "injury",
+            "injuries",
+            "prediction",
+        )
+        if any(term in lowered for term in recent_terms):
+            return "oneWeek"
+        if ("2026" in lowered or "world cup" in lowered or "世界杯" in lowered) and not any(term in lowered for term in historical_terms):
+            return "oneWeek"
         return "oneMonth"
 
     def build_source_trace(self, query: str, web_results: list[dict[str, Any]]) -> dict[str, Any]:
@@ -371,6 +544,7 @@ class WorldCupDataScoutService:
                 "credibility_label": item.get("credibility_label", "一般"),
                 "cross_check_count": item.get("cross_check_count", 1),
                 "trace_note": item.get("trace_note", ""),
+                "timeliness_bucket": item.get("timeliness_bucket", "unknown"),
                 "summary": item.get("summary", ""),
             }
             for item in web_results
@@ -381,6 +555,7 @@ class WorldCupDataScoutService:
         cross_validated = [item for item in sources if int(item.get("cross_check_count") or 0) >= 2]
         high_quality = [item for item in sources if float(item.get("credibility_score") or 0) >= 0.75]
         tracing_queries = self._source_tracing_queries(query, sources)
+        timeliness = self._timeliness_analysis(query, sources)
         if not sources:
             assessment = "本轮没有拿到可追溯网页来源。"
         elif len(cross_validated) >= 2:
@@ -397,6 +572,7 @@ class WorldCupDataScoutService:
             "high_quality_count": len(high_quality),
             "source_tracing_queries": tracing_queries,
             "assessment": assessment,
+            "timeliness": timeliness,
             "sources": sources,
         }
 
@@ -417,6 +593,7 @@ class WorldCupDataScoutService:
                     "credibility_label": self._credibility_label(credibility_score),
                     "source_priority": self._source_priority(item.get("url", ""), bool(item.get("preferred_search"))),
                     "fact_fingerprint": fingerprint,
+                    "timeliness_bucket": self._timeliness_bucket(item.get("date", "")),
                 }
             )
 
@@ -435,8 +612,127 @@ class WorldCupDataScoutService:
 
         return sorted(
             enriched,
-            key=lambda item: (item["source_priority"], item["credibility_score"], item["cross_check_count"]),
+            key=lambda item: (
+                item["source_priority"],
+                self._timeliness_rank(item.get("timeliness_bucket", "")),
+                item["credibility_score"],
+                item["cross_check_count"],
+            ),
             reverse=True,
+        )
+
+    @classmethod
+    def _timeliness_analysis(cls, query: str, sources: list[dict[str, Any]]) -> dict[str, Any]:
+        requires_recent = cls._query_requires_recent(query)
+        parsed_dates = [cls._parse_source_datetime(str(item.get("date") or "")) for item in sources]
+        parsed_dates = [item for item in parsed_dates if item is not None]
+        now = datetime.now(timezone.utc)
+        within_24h = sum(1 for item in parsed_dates if now - item <= timedelta(days=1))
+        within_7d = sum(1 for item in parsed_dates if now - item <= timedelta(days=7))
+        within_30d = sum(1 for item in parsed_dates if now - item <= timedelta(days=30))
+        newest = max(parsed_dates).isoformat() if parsed_dates else None
+        if not sources:
+            status = "no_sources"
+            passed = not requires_recent
+        elif not parsed_dates:
+            status = "unknown_dates"
+            passed = not requires_recent
+        elif requires_recent and within_7d == 0:
+            status = "stale_for_recent_query"
+            passed = False
+        elif requires_recent and within_7d < max(2, min(5, len(sources) // 4)):
+            status = "limited_recent_sources"
+            passed = False
+        else:
+            status = "ok"
+            passed = True
+        return {
+            "requires_recent": requires_recent,
+            "passed": passed,
+            "status": status,
+            "dated_source_count": len(parsed_dates),
+            "within_24h_count": within_24h,
+            "within_7d_count": within_7d,
+            "within_30d_count": within_30d,
+            "newest_source_at": newest,
+            "freshness_filter": cls._web_freshness(query),
+        }
+
+    @staticmethod
+    def _parse_source_datetime(value: str) -> datetime | None:
+        if not value:
+            return None
+        text = value.strip()
+        for candidate in (text, text.replace("Z", "+00:00")):
+            try:
+                parsed = datetime.fromisoformat(candidate)
+                if parsed.tzinfo is None:
+                    parsed = parsed.replace(tzinfo=timezone.utc)
+                return parsed.astimezone(timezone.utc)
+            except ValueError:
+                continue
+        match = re.search(r"(\d{4})[-/](\d{1,2})[-/](\d{1,2})", text)
+        if not match:
+            return None
+        year, month, day = (int(part) for part in match.groups())
+        try:
+            return datetime(year, month, day, tzinfo=timezone.utc)
+        except ValueError:
+            return None
+
+    @classmethod
+    def _timeliness_bucket(cls, value: str) -> str:
+        parsed = cls._parse_source_datetime(str(value or ""))
+        if not parsed:
+            return "unknown"
+        age = datetime.now(timezone.utc) - parsed
+        if age <= timedelta(days=1):
+            return "24h"
+        if age <= timedelta(days=7):
+            return "7d"
+        if age <= timedelta(days=30):
+            return "30d"
+        return "old"
+
+    @staticmethod
+    def _timeliness_rank(bucket: str) -> int:
+        return {"24h": 4, "7d": 3, "30d": 2, "old": 1, "unknown": 0}.get(bucket, 0)
+
+    @staticmethod
+    def _query_requires_recent(query: str) -> bool:
+        lowered = query.casefold()
+        historical_terms = ("历史", "以前", "过去", "往届", "历届", "previous", "history", "historical", "archive")
+        if any(term in lowered for term in historical_terms):
+            return False
+        recent_terms = (
+            "今天",
+            "今日",
+            "现在",
+            "刚刚",
+            "最新",
+            "近期",
+            "实时",
+            "赛前",
+            "赛后",
+            "比赛安排",
+            "预测",
+            "阵容",
+            "伤停",
+            "首发",
+            "today",
+            "latest",
+            "recent",
+            "current",
+            "live",
+            "preview",
+            "lineup",
+            "injury",
+            "injuries",
+            "prediction",
+        )
+        return any(term in lowered for term in recent_terms) or (
+            ("2026" in lowered or "world cup" in lowered or "世界杯" in lowered)
+            and not any(term in lowered for term in historical_terms)
         )
 
     @staticmethod

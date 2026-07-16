@@ -33,7 +33,7 @@ class MatchResultService:
             f"final score result {match['match_date']} FIFA World Cup"
         )
         checkpoint_service.begin(checkpoint_name, {"match_id": match["match_id"], "query": query}, phase="post_match_result")
-        web_results = await data_scout_service.search_web(query, count=10) if self.settings.post_match_include_web else []
+        web_results = await data_scout_service.search_web(query, count=20) if self.settings.post_match_include_web else []
         raw_record = {
             "match_id": match["match_id"],
             "match": match,

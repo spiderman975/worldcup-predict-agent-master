@@ -41,6 +41,7 @@ class ChatSession:
         self.run_id: str | None = None
         self.force_web_search: bool = False
         self.latest_source_trace: dict[str, Any] | None = None
+        self.latest_search_result: dict[str, Any] | None = None
 
 
 _sessions: dict[str, ChatSession] = {}
@@ -101,6 +102,65 @@ def _clean_final_answer(content: str) -> str:
     return "\n".join(lines).strip()
 
 
+def _database_match_facts(search_result: dict[str, Any] | None) -> list[dict[str, str]]:
+    if not search_result:
+        return []
+    facts: list[dict[str, str]] = []
+    for item in search_result.get("database") or []:
+        title = str(item.get("title") or "")
+        summary = str(item.get("summary") or "")
+        if "local://matches/" not in str(item.get("url") or "") and "最近比赛" not in title and "比赛" not in title:
+            continue
+        match = re.search(r"([A-Za-z][A-Za-z .'-]+?)\s+vs\s+([A-Za-z][A-Za-z .'-]+?)(?:，|,|$)", summary)
+        score_match = re.search(r"比分[:：]\s*(\d{1,2})-(\d{1,2})", summary)
+        status_match = re.search(r"状态[:：]\s*([^，,。]+)", summary)
+        if not match or not score_match:
+            continue
+        home = " ".join(match.group(1).split())
+        away = " ".join(match.group(2).split())
+        score = f"{score_match.group(1)}-{score_match.group(2)}"
+        facts.append(
+            {
+                "title": title,
+                "home": home,
+                "away": away,
+                "score": score,
+                "status": status_match.group(1).strip() if status_match else "",
+                "summary": summary,
+            }
+        )
+    unique: list[dict[str, str]] = []
+    seen: set[tuple[str, str, str]] = set()
+    for fact in facts:
+        key = (fact["home"], fact["away"], fact["score"])
+        if key not in seen:
+            seen.add(key)
+            unique.append(fact)
+    return unique
+
+
+def _answer_mentions_fact(answer: str, fact: dict[str, str]) -> bool:
+    compact = re.sub(r"\s+", "", answer.casefold())
+    home = re.sub(r"\s+", "", fact["home"].casefold())
+    away = re.sub(r"\s+", "", fact["away"].casefold())
+    score = fact["score"]
+    reverse_score = "-".join(reversed(score.split("-"))) if "-" in score else score
+    has_teams = home in compact and away in compact
+    has_score = score in answer or reverse_score in answer
+    return has_teams and has_score
+
+
+def _append_database_correction(answer: str, search_result: dict[str, Any] | None) -> str:
+    facts = _database_match_facts(search_result)
+    missing = [fact for fact in facts[:3] if not _answer_mentions_fact(answer, fact)]
+    if not missing:
+        return answer
+    lines = ["", "数据库校正：本地结构化赛程和比分记录优先于网页搜索结果。"]
+    for index, fact in enumerate(missing, start=1):
+        lines.append(f"{index}. {fact['home']} {fact['score']} {fact['away']}，{fact['status'] or '数据库已记录'}。")
+    return answer.rstrip() + "\n".join(lines)
+
+
 async def _stream_agent_message(session: ChatSession, content: str, **extra: Any) -> None:
     content = _clean_final_answer(content)
     timestamp = _message_time()
@@ -132,7 +192,7 @@ async def _build_realtime_search_context(session: ChatSession) -> str:
         }
     )
     try:
-        search_result = await data_scout_service.search(query, include_web=True, top_k=8)
+        search_result = await data_scout_service.search(query, include_web=True, top_k=20)
     except Exception as exc:
         logger.warning("Forced realtime search failed: %s", exc)
         await session.queue.put(
@@ -149,16 +209,18 @@ async def _build_realtime_search_context(session: ChatSession) -> str:
         )
         return "本轮用户开启了实时搜索，但联网搜索调用失败。回答时需要明确说明无法获得实时网页结果，并优先使用数据库与已知上下文。"
 
+    database_count = len(search_result.get("database", []))
     web_count = len(search_result.get("web", []))
     source_trace = search_result.get("source_trace") or {}
     session.latest_source_trace = source_trace
+    session.latest_search_result = search_result
     source_review = critic_agent.review_sources(source_trace)
     await session.queue.put(
         {
             "event": "agent_progress",
             "data": {
                 "message": (
-                    f"实时搜索完成，获得 {web_count} 条网页结果；"
+                    f"数据库检索完成，获得 {database_count} 条本地结果；实时搜索完成，获得 {web_count} 条网页结果；"
                     f"交叉验证来源 {source_trace.get('cross_validated_count', 0)} 条，正在交给 harness 分析。"
                 ),
                 "tool": "worldcup_web_search",
@@ -194,8 +256,9 @@ async def _build_realtime_search_context(session: ChatSession) -> str:
         }
     )
     return (
-        "本轮用户开启了实时搜索。系统已在进入 harness 前强制执行 include_web=True 的联网搜索预检。"
-        "回答必须优先参考下面的实时搜索结果；如果 web 结果为空，需要明确说明未获得可用网页结果，不能假装已经查到。\n"
+        "本轮用户开启了实时搜索。系统已在进入 harness 前先查询本地 SQLite 数据库，再执行联网搜索补充。"
+        "回答必须优先使用 database 中的结构化赛程、比分、球队和球员事实；web 用于补充最新新闻、伤停、阵容和信源验证。"
+        "如果 web 结果为空，需要明确说明未获得可用网页结果，不能假装已经查到。\n"
         f"{json.dumps(search_result, ensure_ascii=False, default=str)}"
     )
 
@@ -245,6 +308,9 @@ async def _stream_with_llm(session: ChatSession) -> str:
                 "\n用户已开启实时搜索模式：本轮回答必须基于系统提供的实时搜索预检结果；"
                 "必要时继续调用 harness 工具 worldcup_web_search、worldcup_search_match_result "
                 "或 worldcup_search_database(include_web=true)，不要跳过实时信息核验。"
+                "如果用户问的是今天、近期、赛前、赛后、最新比赛、阵容、伤停或比赛预测，"
+                "必须先以当前北京时间确认日期和比赛时间，再优先采用 source_trace.timeliness 审核通过、"
+                "且近 7 天内的来源；如果时效性审核未通过，最终回答必须明确提示实时信息可能不足。"
             )
         if realtime_context:
             system_content += f"\n\n实时搜索预检结果：\n{realtime_context}"
@@ -256,7 +322,14 @@ async def _stream_with_llm(session: ChatSession) -> str:
                 {"event": "agent_token", "data": {"role": "agent", "token": token, "timestamp": timestamp}}
             )
         answer = _clean_final_answer(answer)
-        answer_review = critic_agent.review_answer(answer, session.latest_source_trace, force_web_search=session.force_web_search)
+        if session.force_web_search:
+            answer = _append_database_correction(answer, session.latest_search_result)
+        answer_review = critic_agent.review_answer(
+            answer,
+            session.latest_source_trace,
+            force_web_search=session.force_web_search,
+            search_result=session.latest_search_result,
+        )
         if session.force_web_search and (answer_review["warnings"] or answer_review["errors"]):
             await session.queue.put(
                 {
@@ -469,6 +542,7 @@ async def send_message(session_id: str, user_message: str, force_web_search: boo
 
     session.force_web_search = force_web_search
     session.latest_source_trace = None
+    session.latest_search_result = None
     session.messages.append({"role": "user", "content": user_message})
     await _put_message(session, "user", user_message)
 
