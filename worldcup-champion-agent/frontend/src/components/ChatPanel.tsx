@@ -39,6 +39,11 @@ interface SourceTrace {
   source_tracing_queries?: string[];
   assessment?: string;
   sources?: SourceTraceItem[];
+  critic_review?: {
+    warnings?: string[];
+    errors?: string[];
+    quality_score?: number;
+  };
 }
 
 const PHASE_LABELS: Record<string, string> = {
@@ -486,6 +491,13 @@ function SourceTracePanel({
         </Button>
       </div>
       <p className="sourceTraceAssessment">{trace.assessment ?? "暂无来源质量评估。"}</p>
+      {((trace.critic_review?.errors?.length ?? 0) > 0 || (trace.critic_review?.warnings?.length ?? 0) > 0) && (
+        <div className="sourceTraceReview">
+          {[...(trace.critic_review?.errors ?? []), ...(trace.critic_review?.warnings ?? [])].slice(0, 3).map((item) => (
+            <span key={item}>{item}</span>
+          ))}
+        </div>
+      )}
       <div className="sourceTraceList">
         {sources.length === 0 && <span className="sourceTraceEmpty">本轮没有可展示的网页来源。</span>}
         {sources.map((item, index) => (

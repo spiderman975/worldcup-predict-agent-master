@@ -54,6 +54,31 @@ class ScoutSearchResult:
 class WorldCupDataScoutService:
     """Read the collaborator SQLite data layer and expose scout-friendly queries."""
 
+    TRUSTED_FOOTBALL_DOMAINS = [
+        "fifa.com",
+        "reuters.com",
+        "apnews.com",
+        "bbc.com/sport",
+        "espn.com",
+        "skysports.com",
+        "theguardian.com/football",
+        "theathletic.com",
+        "transfermarkt.com",
+        "sofascore.com",
+        "fotmob.com",
+        "whoscored.com",
+        "soccerway.com",
+        "worldfootball.net",
+    ]
+
+    HISTORICAL_FOOTBALL_DOMAINS = [
+        "fifa.com",
+        "worldfootball.net",
+        "rsssf.org",
+        "transfermarkt.com",
+        "soccerway.com",
+    ]
+
     def __init__(self) -> None:
         self.project_root = PROJECT_ROOT
         self.search_cache: dict[str, list[dict[str, Any]]] = {}
@@ -229,7 +254,7 @@ class WorldCupDataScoutService:
 
         return [item.as_dict() for item in sorted(results, key=lambda item: item.score, reverse=True)[:top_k]]
 
-    async def search_web(self, query: str, count: int = 5) -> list[dict[str, Any]]:
+    async def search_web(self, query: str, count: int = 8) -> list[dict[str, Any]]:
         settings = get_settings()
         api_key = getattr(settings, "bocha_api_key", None)
         if not api_key:
@@ -238,23 +263,53 @@ class WorldCupDataScoutService:
                 self._warned_missing_key = True
             return []
 
-        cache_key = hashlib.md5(query.encode("utf-8")).hexdigest()
+        freshness = self._web_freshness(query)
+        target_count = max(8, min(count, 12))
+        cache_key = hashlib.md5(f"{query}|{target_count}|{freshness}|trusted-first".encode("utf-8")).hexdigest()
         if cache_key in self.search_cache:
             return self.search_cache[cache_key]
 
-        payload = {"query": query, "summary": True, "count": count, "freshness": "noLimit"}
         headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+        raw_results: list[dict[str, Any]] = []
         try:
             async with httpx.AsyncClient(timeout=20, trust_env=False) as client:
-                response = await client.post("https://api.bocha.cn/v1/web-search", json=payload, headers=headers)
-                response.raise_for_status()
-                data = response.json()
+                for trusted_query in self._trusted_site_queries(query):
+                    try:
+                        raw_results.extend(
+                            await self._fetch_web_search(client, headers, trusted_query, count=3, freshness=freshness, preferred=True)
+                        )
+                    except Exception as exc:
+                        logger.debug("高可信站点定向搜索失败，继续其他来源：%s", exc)
+                try:
+                    raw_results.extend(
+                        await self._fetch_web_search(client, headers, query, count=target_count, freshness=freshness, preferred=False)
+                    )
+                except Exception as exc:
+                    logger.warning("普通联网搜索调用失败：%s", exc)
         except Exception as exc:
             logger.warning("联网搜索调用失败，已跳过本次联网搜索：%s", exc)
             return []
 
+        results = self._enrich_web_results(query, raw_results)[:target_count]
+        self.search_cache[cache_key] = results
+        return results
+
+    async def _fetch_web_search(
+        self,
+        client: httpx.AsyncClient,
+        headers: dict[str, str],
+        query: str,
+        *,
+        count: int,
+        freshness: str,
+        preferred: bool,
+    ) -> list[dict[str, Any]]:
+        payload = {"query": query, "summary": True, "count": count, "freshness": freshness}
+        response = await client.post("https://api.bocha.cn/v1/web-search", json=payload, headers=headers)
+        response.raise_for_status()
+        data = response.json()
         webpages = data.get("data", {}).get("webPages", {}).get("value", [])
-        raw_results = [
+        return [
             {
                 "title": item.get("name", "N/A"),
                 "summary": item.get("summary") or item.get("snippet", ""),
@@ -262,13 +317,16 @@ class WorldCupDataScoutService:
                 "url": item.get("url", ""),
                 "date": item.get("datePublished") or item.get("dateLastCrawled", ""),
                 "kind": "web",
+                "preferred_search": preferred,
+                "search_query": query,
             }
             for item in webpages
             if item.get("url") and (item.get("summary") or item.get("snippet"))
         ]
-        results = self._enrich_web_results(query, raw_results)
-        self.search_cache[cache_key] = results
-        return results
+
+    def _trusted_site_queries(self, query: str) -> list[str]:
+        domains = self.HISTORICAL_FOOTBALL_DOMAINS if self._web_freshness(query) == "noLimit" else self.TRUSTED_FOOTBALL_DOMAINS
+        return [f"{query} site:{domain}" for domain in domains[:5]]
 
     async def search(self, query: str, *, include_web: bool = False, top_k: int = 8) -> dict[str, Any]:
         database_results = self.search_database(query, top_k=top_k)
@@ -279,6 +337,25 @@ class WorldCupDataScoutService:
             "web": web_results,
             "source_trace": self.build_source_trace(query, web_results),
         }
+
+    @staticmethod
+    def _web_freshness(query: str) -> str:
+        historical_terms = (
+            "历史",
+            "以前",
+            "过去",
+            "往届",
+            "历届",
+            "previous",
+            "history",
+            "historical",
+            "all time",
+            "archive",
+        )
+        lowered = query.casefold()
+        if any(term in lowered for term in historical_terms):
+            return "noLimit"
+        return "oneMonth"
 
     def build_source_trace(self, query: str, web_results: list[dict[str, Any]]) -> dict[str, Any]:
         """Build lightweight source rating, cross-check and trace metadata for UI display."""
@@ -338,6 +415,7 @@ class WorldCupDataScoutService:
                     "source_type": source_type,
                     "credibility_score": credibility_score,
                     "credibility_label": self._credibility_label(credibility_score),
+                    "source_priority": self._source_priority(item.get("url", ""), bool(item.get("preferred_search"))),
                     "fact_fingerprint": fingerprint,
                 }
             )
@@ -355,7 +433,11 @@ class WorldCupDataScoutService:
             item["cross_check_count"] = cross_count
             item["trace_note"] = self._trace_note(item, cross_count)
 
-        return sorted(enriched, key=lambda item: (item["credibility_score"], item["cross_check_count"]), reverse=True)
+        return sorted(
+            enriched,
+            key=lambda item: (item["source_priority"], item["credibility_score"], item["cross_check_count"]),
+            reverse=True,
+        )
 
     @staticmethod
     def _rate_source(source_name: str, url: str) -> tuple[str, float]:
@@ -363,8 +445,18 @@ class WorldCupDataScoutService:
         label = f"{source_name} {host}".lower()
         official_terms = ["fifa.com", "uefa.com", "the-afc.com", "conmebol", "concacaf", "thefa.com", "afa.com.ar"]
         academic_terms = [".edu", "scholar", "researchgate", "arxiv", "doi.org"]
-        authority_media = ["reuters", "apnews", "bbc", "espn", "skysports", "theguardian", "nytimes", "theathletic"]
-        sports_data = ["transfermarkt", "sofascore", "fotmob", "whoscored", "worldfootball", "soccerway", "flashscore"]
+        authority_media = ["reuters", "apnews", "bbc", "espn", "skysports", "theguardian", "nytimes", "theathletic", "goal.com"]
+        sports_data = [
+            "transfermarkt",
+            "sofascore",
+            "fotmob",
+            "whoscored",
+            "worldfootball",
+            "soccerway",
+            "flashscore",
+            "theanalyst.com",
+            "rsssf.org",
+        ]
         social_terms = ["twitter", "x.com", "facebook", "instagram", "reddit", "tiktok", "weibo", "youtube", "blog"]
         if any(term in label for term in official_terms):
             return "official", 0.95
@@ -377,6 +469,19 @@ class WorldCupDataScoutService:
         if any(term in label for term in social_terms):
             return "self_media", 0.38
         return "news", 0.62
+
+    @classmethod
+    def _source_priority(cls, url: str, preferred_search: bool) -> int:
+        host = urlparse(url).netloc.lower()
+        domain_hit = any(domain.replace("/sport", "").replace("/football", "") in host for domain in cls.TRUSTED_FOOTBALL_DOMAINS)
+        historical_hit = any(domain in host for domain in cls.HISTORICAL_FOOTBALL_DOMAINS)
+        if preferred_search and (domain_hit or historical_hit):
+            return 3
+        if domain_hit or historical_hit:
+            return 2
+        if preferred_search:
+            return 1
+        return 0
 
     @staticmethod
     def _credibility_label(score: float) -> str:

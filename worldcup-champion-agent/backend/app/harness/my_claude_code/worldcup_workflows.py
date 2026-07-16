@@ -118,7 +118,7 @@ def _h_worldcup_search_database(query: str, include_web: bool = False, top_k: in
     return _json(asyncio.run(data_scout_service.search(query, include_web=include_web, top_k=top_k)))
 
 
-def _h_worldcup_web_search(query: str, purpose: str = "general", top_k: int = 5) -> str:
+def _h_worldcup_web_search(query: str, purpose: str = "general", top_k: int = 8) -> str:
     from app.services.data_scout_service import data_scout_service
 
     search_query = f"{query} {purpose}".strip()
@@ -134,7 +134,7 @@ def _h_worldcup_web_search(query: str, purpose: str = "general", top_k: int = 5)
     )
 
 
-def _h_worldcup_search_match_result(match_id: str, top_k: int = 5) -> str:
+def _h_worldcup_search_match_result(match_id: str, top_k: int = 8) -> str:
     from app.services.match_prediction_service import get_match
     from app.services.data_scout_service import data_scout_service
 

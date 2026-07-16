@@ -278,6 +278,8 @@ class MatchPredictionPipeline:
         enhanced["warnings"] = list(dict.fromkeys(rule_warnings + llm_warnings + llm_errors))
         enhanced["passed"] = not rule_errors
         enhanced["summary"] = "审核通过。" if enhanced["passed"] else f"发现 {len(rule_errors)} 个关键问题。"
+        enhanced["checks"] = critic.get("checks", [])
+        enhanced["quality_score"] = critic.get("quality_score")
         return enhanced
 
     async def predict(
@@ -320,7 +322,21 @@ class MatchPredictionPipeline:
         narration = await self._enhance_narration(self.narrator.run(prediction, analysis), prediction, analysis, match, phase)
         await self._emit_agent(narration, match, phase)
 
-        critic = await self._enhance_critic(self.critic.run(prediction, narration, allow_draw), prediction, narration, match, allow_draw, phase)
+        critic = await self._enhance_critic(
+            self.critic.run(
+                prediction,
+                narration,
+                allow_draw,
+                match=match,
+                scout=scout,
+                analysis=analysis,
+            ),
+            prediction,
+            narration,
+            match,
+            allow_draw,
+            phase,
+        )
         await self._emit_agent(critic, match, phase)
 
         prediction["agent_trace"] = [

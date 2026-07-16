@@ -40,6 +40,10 @@ class Settings:
         self.default_monte_carlo_runs = int(os.getenv("DEFAULT_MONTE_CARLO_RUNS", "1000"))
         self.my_claude_runtime_enabled = os.getenv("MY_CLAUDE_RUNTIME_ENABLED", "true").strip().lower() in {"1", "true", "yes", "on"}
         self.bocha_api_key = os.getenv("BOCHA_API_KEY") or None
+        self.football_data_api_key = os.getenv("FOOTBALL_DATA_API_KEY") or None
+        self.live_score_sync_enabled = os.getenv("LIVE_SCORE_SYNC_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
+        self.live_score_sync_interval_seconds = int(os.getenv("LIVE_SCORE_SYNC_INTERVAL_SECONDS", "300"))
+        self.football_data_season = os.getenv("FOOTBALL_DATA_SEASON", "2026")
         self.redis_enabled = os.getenv("REDIS_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
         self.redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
         self.redis_key_prefix = os.getenv("REDIS_KEY_PREFIX", "worldcup-agent")

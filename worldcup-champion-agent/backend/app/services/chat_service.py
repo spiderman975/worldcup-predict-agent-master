@@ -22,11 +22,13 @@ from app.services.match_prediction_service import (
 from app.services.my_claude_runtime_service import my_claude_runtime_service
 from app.services.stream_service import stream_service
 from app.services.team_analysis_service import get_team_ratings_and_odds, search_teams
+from app.agent.roles.critic import CriticAgent
 
 logger = logging.getLogger(__name__)
 
 BEIJING_TZ = ZoneInfo("Asia/Shanghai")
 TERMINAL_EVENTS = {"prediction_complete", "prediction_error", "prediction_canceled"}
+critic_agent = CriticAgent()
 
 
 class ChatSession:
@@ -38,6 +40,7 @@ class ChatSession:
         self.active_task: asyncio.Task[None] | None = None
         self.run_id: str | None = None
         self.force_web_search: bool = False
+        self.latest_source_trace: dict[str, Any] | None = None
 
 
 _sessions: dict[str, ChatSession] = {}
@@ -129,7 +132,7 @@ async def _build_realtime_search_context(session: ChatSession) -> str:
         }
     )
     try:
-        search_result = await data_scout_service.search(query, include_web=True, top_k=5)
+        search_result = await data_scout_service.search(query, include_web=True, top_k=8)
     except Exception as exc:
         logger.warning("Forced realtime search failed: %s", exc)
         await session.queue.put(
@@ -148,6 +151,8 @@ async def _build_realtime_search_context(session: ChatSession) -> str:
 
     web_count = len(search_result.get("web", []))
     source_trace = search_result.get("source_trace") or {}
+    session.latest_source_trace = source_trace
+    source_review = critic_agent.review_sources(source_trace)
     await session.queue.put(
         {
             "event": "agent_progress",
@@ -163,11 +168,26 @@ async def _build_realtime_search_context(session: ChatSession) -> str:
             },
         }
     )
+    if source_review["warnings"] or source_review["errors"]:
+        await session.queue.put(
+            {
+                "event": "agent_progress",
+                "data": {
+                    "message": "审核提醒：" + "；".join((source_review["errors"] + source_review["warnings"])[:2]),
+                    "tool": "CriticAgent",
+                    "status": "completed" if not source_review["errors"] else "failed",
+                    "source": "critic",
+                    "timestamp": _message_time(),
+                    "detail": source_review,
+                },
+            }
+        )
     await session.queue.put(
         {
             "event": "source_trace",
             "data": {
                 **source_trace,
+                "critic_review": source_review,
                 "timestamp": _message_time(),
                 "enabled": True,
             },
@@ -236,6 +256,21 @@ async def _stream_with_llm(session: ChatSession) -> str:
                 {"event": "agent_token", "data": {"role": "agent", "token": token, "timestamp": timestamp}}
             )
         answer = _clean_final_answer(answer)
+        answer_review = critic_agent.review_answer(answer, session.latest_source_trace, force_web_search=session.force_web_search)
+        if session.force_web_search and (answer_review["warnings"] or answer_review["errors"]):
+            await session.queue.put(
+                {
+                    "event": "agent_progress",
+                    "data": {
+                        "stage": "answer_review",
+                        "status": "completed" if not answer_review["errors"] else "failed",
+                        "message": "最终回答审核：" + "；".join((answer_review["errors"] + answer_review["warnings"])[:2]),
+                        "timestamp": _message_time(),
+                        "source": "critic",
+                        "detail": answer_review,
+                    },
+                }
+            )
         await session.queue.put(
             {"event": "agent_done", "data": {"role": "agent", "content": answer, "timestamp": timestamp}}
         )
@@ -433,6 +468,7 @@ async def send_message(session_id: str, user_message: str, force_web_search: boo
         raise ValueError(f"Chat session {session_id} does not exist")
 
     session.force_web_search = force_web_search
+    session.latest_source_trace = None
     session.messages.append({"role": "user", "content": user_message})
     await _put_message(session, "user", user_message)
 

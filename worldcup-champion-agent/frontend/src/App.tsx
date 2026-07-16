@@ -22,6 +22,7 @@ import {
   getTeamDetail,
   getTeams,
   connectMatchPredictionStream,
+  prefetchCoreData,
   startMatchPrediction,
 } from "./api/predictionApi";
 import { ChatPanel } from "./components/ChatPanel";
@@ -125,6 +126,10 @@ function Shell() {
   const location = useLocation();
   const [chatVisible, setChatVisible] = useState(false);
   const selectedKey = location.pathname === "/" ? "/home" : location.pathname.split("/").slice(0, 2).join("/");
+
+  useEffect(() => {
+    prefetchCoreData();
+  }, []);
 
   return (
     <Layout className="appShell">

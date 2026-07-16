@@ -217,6 +217,13 @@ export async function getRatings() {
   );
 }
 
+export function prefetchCoreData() {
+  void getTeams().catch(() => undefined);
+  void getRatings().catch(() => undefined);
+  void getSchedule().catch(() => undefined);
+  void getMatches().catch(() => undefined);
+}
+
 export async function searchTeams(query: string) {
   return readJson<any>(await apiFetch(`/api/search/teams?q=${encodeURIComponent(query)}`), "检索球队失败");
 }
