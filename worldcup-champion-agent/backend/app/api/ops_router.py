@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Body, Query
+from pydantic import BaseModel, Field
 
 from app.core.redis_client import redis_client
 from app.services.cache_service import cache_service
@@ -10,8 +11,18 @@ from app.services.match_prediction_service import get_match
 from app.services.match_result_service import match_result_service
 from app.services.scheduler_service import scheduler_service
 from app.services.text2sql_service import text2sql_service
+from app.services.worldcup_initialization_service import WorldCupInitializeOptions, worldcup_initialization_service
+from data.database import get_active_season, get_connection, init_db
 
 router = APIRouter(prefix="/api/ops", tags=["ops"])
+
+
+class WorldCupInitializeRequest(BaseModel):
+    season: int = Field(..., ge=1930, le=2100)
+    activate: bool = True
+    sync_football_data: bool = True
+    bootstrap_teams: bool = True
+    init_knockout_placeholders: bool = True
 
 
 @router.get("/redis/health")
@@ -56,6 +67,34 @@ def live_sync_status() -> dict:
 @router.post("/live-sync")
 async def trigger_live_sync() -> dict:
     return await live_score_sync_service.sync_once(force=True)
+
+
+@router.get("/worldcup/seasons")
+def list_worldcup_seasons() -> dict:
+    init_db()
+    with get_connection() as connection:
+        rows = connection.execute(
+            """
+            SELECT season, competition_code, competition_name, status, is_active, data_source,
+                   initialized_at, updated_at, notes
+            FROM worldcup_seasons
+            ORDER BY season DESC
+            """
+        ).fetchall()
+    return {"active_season": get_active_season(), "seasons": [dict(row) for row in rows]}
+
+
+@router.post("/worldcup/initialize")
+def initialize_worldcup(payload: WorldCupInitializeRequest) -> dict:
+    return worldcup_initialization_service.initialize(
+        WorldCupInitializeOptions(
+            season=payload.season,
+            activate=payload.activate,
+            sync_football_data=payload.sync_football_data,
+            bootstrap_teams=payload.bootstrap_teams,
+            init_knockout_placeholders=payload.init_knockout_placeholders,
+        )
+    )
 
 
 @router.post("/matches/{match_id}/result-refresh")

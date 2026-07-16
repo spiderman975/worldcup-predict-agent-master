@@ -122,6 +122,8 @@ export function getCachedRatings() {
 }
 
 export function clearFrontendDataCache() {
+  frontendCache.delete("teams");
+  frontendCache.delete("ratings");
   frontendCache.delete("matches");
   frontendCache.delete("schedule");
   frontendCache.delete("live-sync-status");
@@ -262,6 +264,31 @@ export async function triggerLiveSync() {
   const result = await readJson<LiveSyncStatus>(await apiFetch("/api/ops/live-sync", { method: "POST" }), "Failed to trigger live sync");
   clearFrontendDataCache();
   return result;
+}
+
+export type WorldCupInitializePayload = {
+  season: number;
+  activate: boolean;
+  sync_football_data: boolean;
+  bootstrap_teams: boolean;
+  init_knockout_placeholders: boolean;
+};
+
+export async function initializeWorldCupSeason(payload: WorldCupInitializePayload) {
+  const result = await readJson<any>(
+    await apiFetch("/api/ops/worldcup/initialize", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+    "Failed to initialize World Cup season",
+  );
+  clearFrontendDataCache();
+  return result;
+}
+
+export async function getWorldCupSeasons() {
+  return readJson<any>(await apiFetch("/api/ops/worldcup/seasons"), "Failed to load World Cup seasons");
 }
 
 export async function searchTeams(query: string) {

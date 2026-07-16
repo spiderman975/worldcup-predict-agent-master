@@ -206,16 +206,17 @@ class WorldCupDataScoutService:
                 return None
 
         injured = get_injured_players(team.name)
+        profile = self._season_profile(team.name)
         active_lineup = team.starting_lineup or [member.name for member in team.members[:11]]
         return {
             "name": team.name,
-            "group": team.group,
-            "fifa_ranking": team.fifa_ranking,
-            "attack_team": team.attack_team,
-            "defensive_team": team.defensive_team,
-            "computed_attack": round(team.get_attack(), 4),
-            "computed_defensive": round(team.get_defensive(), 4),
-            "streak": team.streak,
+            "group": (profile or {}).get("group") or team.group,
+            "fifa_ranking": (profile or {}).get("fifa_ranking") or team.fifa_ranking,
+            "attack_team": (profile or {}).get("attack_team", team.attack_team),
+            "defensive_team": (profile or {}).get("defensive_team", team.defensive_team),
+            "computed_attack": round(float((profile or {}).get("attack_team", team.get_attack())), 4),
+            "computed_defensive": round(float((profile or {}).get("defensive_team", team.get_defensive())), 4),
+            "streak": (profile or {}).get("streak", team.streak),
             "starting_lineup": active_lineup,
             "injured_players": [
                 {
@@ -842,23 +843,42 @@ class WorldCupDataScoutService:
 
     def _find_match(self, home_name: str, away_name: str, match_id: str) -> dict[str, Any] | None:
         self.ensure_database()
+        from data.database import get_active_season
+
         with self._connection() as connection:
             row = connection.execute(
                 """
                 SELECT match_id, stage, home_team, away_team, home_score, away_score, is_real, played_at
                 FROM matches
-                WHERE match_id = ?
-                   OR ((home_team = ? AND away_team = ?) OR (home_team = ? AND away_team = ?))
+                WHERE season = ?
+                  AND (
+                    match_id = ?
+                    OR ((home_team = ? AND away_team = ?) OR (home_team = ? AND away_team = ?))
+                  )
                 LIMIT 1
                 """,
-                (match_id, home_name, away_name, away_name, home_name),
+                (get_active_season(), match_id, home_name, away_name, away_name, home_name),
             ).fetchone()
         return dict(row) if row else None
 
     def _all_team_rows(self) -> list[dict[str, Any]]:
+        from data.database import get_active_season
+
         with self._connection() as connection:
             rows = connection.execute(
-                'SELECT name, "group", attack_team, defensive_team, streak, starting_lineup, fifa_ranking FROM teams'
+                """
+                SELECT t.name,
+                       COALESCE(p."group", t."group") AS "group",
+                       COALESCE(p.attack_team, t.attack_team) AS attack_team,
+                       COALESCE(p.defensive_team, t.defensive_team) AS defensive_team,
+                       COALESCE(p.streak, t.streak) AS streak,
+                       t.starting_lineup,
+                       COALESCE(p.fifa_ranking, t.fifa_ranking) AS fifa_ranking
+                FROM teams t
+                JOIN team_season_profiles p ON p.team_name = t.name AND p.season = ?
+                ORDER BY t.name
+                """,
+                (get_active_season(),),
             ).fetchall()
         return [dict(row) for row in rows]
 
@@ -870,11 +890,32 @@ class WorldCupDataScoutService:
         return [dict(row) for row in rows]
 
     def _all_match_rows(self) -> list[dict[str, Any]]:
+        from data.database import get_active_season
+
         with self._connection() as connection:
             rows = connection.execute(
-                "SELECT match_id, stage, home_team, away_team, home_score, away_score, is_real, played_at FROM matches"
+                """
+                SELECT match_id, stage, home_team, away_team, home_score, away_score, is_real, played_at
+                FROM matches
+                WHERE season = ?
+                """,
+                (get_active_season(),),
             ).fetchall()
         return [dict(row) for row in rows]
+
+    def _season_profile(self, team_name: str) -> dict[str, Any] | None:
+        from data.database import get_active_season
+
+        with self._connection() as connection:
+            row = connection.execute(
+                """
+                SELECT "group", attack_team, defensive_team, streak, fifa_ranking
+                FROM team_season_profiles
+                WHERE season = ? AND team_name = ?
+                """,
+                (get_active_season(), team_name),
+            ).fetchone()
+        return dict(row) if row else None
 
     def _frontend_team(self, report: dict[str, Any]) -> dict[str, Any]:
         attack_score = self._score_0_1(report["computed_attack"])

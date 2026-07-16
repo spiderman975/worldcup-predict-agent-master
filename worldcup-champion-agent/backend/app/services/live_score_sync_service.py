@@ -72,6 +72,9 @@ class LiveScoreSyncService:
                 return {**self.status(), "success": True, "skipped": True, "reason": "lock_busy"}
             self.running = True
             try:
+                from data.database import get_active_season
+
+                active_season = get_active_season()
                 source = FootballDataSource(api_key=self.settings.football_data_api_key)
                 external = [
                     ExternalMatch(
@@ -85,10 +88,10 @@ class LiveScoreSyncService:
                         played_at=item.played_at,
                         status="finished" if item.is_real else "scheduled",
                     )
-                    for item in source.load_matches(int(self.settings.football_data_season))
+                    for item in source.load_matches(active_season)
                     if item.home_team and item.away_team
                 ]
-                result = self._apply_external_matches(external)
+                result = self._apply_external_matches(external, active_season)
                 self.running = False
                 return self._record(status="success", success=True, **result)
             except Exception as exc:
@@ -98,7 +101,7 @@ class LiveScoreSyncService:
             finally:
                 self.running = False
 
-    def _apply_external_matches(self, external_matches: list[ExternalMatch]) -> dict[str, Any]:
+    def _apply_external_matches(self, external_matches: list[ExternalMatch], season: int) -> dict[str, Any]:
         from data.database import get_connection, init_db
 
         init_db()
@@ -109,9 +112,12 @@ class LiveScoreSyncService:
         with get_connection() as connection:
             rows = connection.execute(
                 """
-                SELECT match_id, stage, home_team, away_team, home_score, away_score, is_real, played_at, status
+                SELECT match_id, stage, home_team, away_team, home_score, away_score, is_real, played_at, status, source_match_id
                 FROM matches
+                WHERE season = ?
                 """
+                ,
+                (season,),
             ).fetchall()
             local_matches = [dict(row) for row in rows]
             for external in external_matches:
@@ -156,6 +162,9 @@ class LiveScoreSyncService:
         }
 
     def _match_local(self, external: ExternalMatch, local_matches: list[dict[str, Any]]) -> dict[str, Any]:
+        for local in local_matches:
+            if str(local.get("source_match_id") or "") == str(external.match_id):
+                return {"status": "matched", "match": local, "swapped": False}
         candidates: list[tuple[dict[str, Any], bool]] = []
         for local in local_matches:
             if not _stage_compatible(int(local["stage"]), external.stage_number):

@@ -7,7 +7,7 @@ import {
   TeamOutlined,
   TrophyOutlined,
 } from "@ant-design/icons";
-import { Button, ConfigProvider, Empty, Layout, Menu, Modal, Progress, Space, Spin, Tag, message, theme } from "antd";
+import { Button, Checkbox, ConfigProvider, Empty, Form, InputNumber, Layout, Menu, Modal, Progress, Space, Spin, Tag, message, theme } from "antd";
 import zhCN from "antd/locale/zh_CN";
 import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate, Route, Routes, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -23,6 +23,7 @@ import {
   getTeamDetail,
   getTeams,
   getLiveSyncStatus,
+  initializeWorldCupSeason,
   connectMatchPredictionStream,
   predictMatch,
   prefetchCoreData,
@@ -512,6 +513,9 @@ function SchedulePage() {
   const [dates, setDates] = useState<{ date: string; matches: Match[] }[]>(cachedSchedule?.dates ?? []);
   const [loading, setLoading] = useState(!cachedSchedule);
   const [predicting, setPredicting] = useState<string | null>(null);
+  const [initOpen, setInitOpen] = useState(false);
+  const [initializingSeason, setInitializingSeason] = useState(false);
+  const [initForm] = Form.useForm();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const view = searchParams.get("view");
@@ -556,10 +560,93 @@ function SchedulePage() {
     }
   };
 
+  const openInitializeFlow = () => {
+    Modal.confirm({
+      title: "确认初始化新一届世界杯？",
+      content: "此操作不会删除旧数据，但会新增一个世界杯届次并可切换为当前启用届次。前端赛程、排名、淘汰赛图和预测默认显示新届次数据。",
+      okText: "继续填写信息",
+      cancelText: "取消",
+      onOk: () => {
+        initForm.setFieldsValue({
+          season: new Date().getFullYear() <= 2026 ? 2030 : new Date().getFullYear(),
+          activate: true,
+          sync_football_data: true,
+          bootstrap_teams: true,
+          init_knockout_placeholders: true,
+        });
+        setInitOpen(true);
+      },
+    });
+  };
+
+  const submitInitialize = async () => {
+    const values = await initForm.validateFields();
+    setInitializingSeason(true);
+    try {
+      const result = await initializeWorldCupSeason({
+        season: Number(values.season),
+        activate: Boolean(values.activate),
+        sync_football_data: Boolean(values.sync_football_data),
+        bootstrap_teams: Boolean(values.bootstrap_teams),
+        init_knockout_placeholders: Boolean(values.init_knockout_placeholders),
+      });
+      message.success(result.message || "新一届世界杯初始化完成");
+      if (result.warnings?.length) {
+        Modal.warning({
+          title: "初始化完成，但有提示",
+          content: (
+            <div className="initWarningList">
+              {result.warnings.map((item: string) => <p key={item}>{item}</p>)}
+            </div>
+          ),
+        });
+      }
+      setInitOpen(false);
+      await refreshSchedule();
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : "初始化失败");
+    } finally {
+      setInitializingSeason(false);
+    }
+  };
+
   return (
     <div className="pageStack">
       <LiveSyncBar onRefresh={refreshSchedule} />
+      <div className="scheduleOpsBar">
+        <span>需要切换新届次时，可从专业足球数据源初始化赛程并启用新一届世界杯。</span>
+        <Button type="primary" onClick={openInitializeFlow}>
+          初始化并开启新一届世界杯
+        </Button>
+      </div>
       <PageTitle title="世界杯赛程表" sub="点击比赛日查看当日对阵。已完赛日期会以绿色标注，赛程数据优先来自 SQLite 数据库。" />
+      <Modal
+        title="初始化新一届世界杯"
+        open={initOpen}
+        onCancel={() => setInitOpen(false)}
+        onOk={submitInitialize}
+        confirmLoading={initializingSeason}
+        okText="确认初始化"
+        cancelText="取消"
+      >
+        <Form form={initForm} layout="vertical">
+          <Form.Item name="season" label="世界杯年份" rules={[{ required: true, message: "请填写世界杯年份" }]}>
+            <InputNumber min={1930} max={2100} step={4} style={{ width: "100%" }} />
+          </Form.Item>
+          <Form.Item name="activate" valuePropName="checked">
+            <Checkbox>初始化后切换为当前启用届次</Checkbox>
+          </Form.Item>
+          <Form.Item name="sync_football_data" valuePropName="checked">
+            <Checkbox>从 football-data.org 抓取赛程和比分</Checkbox>
+          </Form.Item>
+          <Form.Item name="bootstrap_teams" valuePropName="checked">
+            <Checkbox>补齐缺失球队基础数据</Checkbox>
+          </Form.Item>
+          <Form.Item name="init_knockout_placeholders" valuePropName="checked">
+            <Checkbox>补齐淘汰赛待定占位</Checkbox>
+          </Form.Item>
+        </Form>
+      </Modal>
       {view === "prematch" && (
         <section className="focusPanel">
           <h2>赛前 30 分钟实时增强</h2>

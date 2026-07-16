@@ -58,7 +58,39 @@ def init_db() -> None:
                 home_score INTEGER DEFAULT -1,
                 away_score INTEGER DEFAULT -1,
                 is_real BOOLEAN DEFAULT FALSE,
-                played_at TEXT
+                played_at TEXT,
+                status TEXT DEFAULT '',
+                season INTEGER,
+                competition_code TEXT DEFAULT 'WC',
+                source_match_id TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS worldcup_seasons (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                season INTEGER NOT NULL UNIQUE,
+                competition_code TEXT NOT NULL DEFAULT 'WC',
+                competition_name TEXT NOT NULL DEFAULT 'World Cup',
+                status TEXT NOT NULL DEFAULT 'initialized',
+                is_active INTEGER NOT NULL DEFAULT 0,
+                data_source TEXT,
+                notes TEXT,
+                initialized_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS team_season_profiles (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                season INTEGER NOT NULL,
+                team_name TEXT NOT NULL,
+                "group" TEXT NOT NULL DEFAULT '',
+                attack_team REAL DEFAULT 1.0,
+                defensive_team REAL DEFAULT 1.0,
+                streak INTEGER DEFAULT 0,
+                fifa_ranking INTEGER,
+                source TEXT,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (team_name) REFERENCES teams(name),
+                UNIQUE (season, team_name)
             );
 
             CREATE TABLE IF NOT EXISTS app_checkpoints (
@@ -150,6 +182,8 @@ def init_db() -> None:
             CREATE INDEX IF NOT EXISTS idx_matches_status_time ON matches(is_real, played_at);
             CREATE INDEX IF NOT EXISTS idx_teams_group_rank ON teams("group", fifa_ranking);
             CREATE INDEX IF NOT EXISTS idx_teams_fifa_ranking ON teams(fifa_ranking);
+            CREATE INDEX IF NOT EXISTS idx_team_profiles_season ON team_season_profiles(season, "group", fifa_ranking);
+            CREATE INDEX IF NOT EXISTS idx_worldcup_seasons_active ON worldcup_seasons(is_active, season);
             CREATE INDEX IF NOT EXISTS idx_members_team ON members(team_name);
             CREATE INDEX IF NOT EXISTS idx_members_injured ON members(team_name, injured);
             CREATE INDEX IF NOT EXISTS idx_members_name ON members(name);
@@ -167,7 +201,75 @@ def init_db() -> None:
         match_columns = {row["name"] for row in connection.execute("PRAGMA table_info(matches)").fetchall()}
         if "status" not in match_columns:
             connection.execute("ALTER TABLE matches ADD COLUMN status TEXT DEFAULT ''")
+        if "season" not in match_columns:
+            connection.execute("ALTER TABLE matches ADD COLUMN season INTEGER")
+        if "competition_code" not in match_columns:
+            connection.execute("ALTER TABLE matches ADD COLUMN competition_code TEXT DEFAULT 'WC'")
+        if "source_match_id" not in match_columns:
+            connection.execute("ALTER TABLE matches ADD COLUMN source_match_id TEXT")
+        default_season = _default_season()
+        connection.execute(
+            """
+            INSERT INTO worldcup_seasons (season, competition_code, competition_name, status, is_active, data_source, notes)
+            VALUES (?, 'WC', 'World Cup', 'initialized', 1, 'local', 'Initial local dataset')
+            ON CONFLICT(season) DO UPDATE SET
+                is_active = CASE
+                    WHEN NOT EXISTS (SELECT 1 FROM worldcup_seasons WHERE is_active = 1 AND season <> excluded.season)
+                    THEN 1 ELSE worldcup_seasons.is_active END,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (default_season,),
+        )
+        connection.execute("UPDATE matches SET season = ? WHERE season IS NULL", (default_season,))
+        connection.execute("UPDATE matches SET competition_code = 'WC' WHERE competition_code IS NULL OR competition_code = ''")
+        connection.execute("CREATE INDEX IF NOT EXISTS idx_matches_season_stage ON matches(season, stage)")
+        connection.execute("CREATE INDEX IF NOT EXISTS idx_matches_season_time ON matches(season, played_at)")
+        connection.execute("CREATE INDEX IF NOT EXISTS idx_matches_source ON matches(source_match_id)")
+        connection.execute(
+            """
+            INSERT OR IGNORE INTO team_season_profiles (
+                season, team_name, "group", attack_team, defensive_team, streak, fifa_ranking, source
+            )
+            SELECT ?, name, "group", attack_team, defensive_team, streak, fifa_ranking, 'local'
+            FROM teams
+            """,
+            (default_season,),
+        )
         connection.execute("CREATE INDEX IF NOT EXISTS idx_matches_external_status ON matches(status, played_at)")
+
+
+def _default_season() -> int:
+    import os
+
+    try:
+        return int(os.getenv("FOOTBALL_DATA_SEASON", "2026"))
+    except ValueError:
+        return 2026
+
+
+def get_active_season() -> int:
+    init_db()
+    with get_connection() as connection:
+        row = connection.execute(
+            "SELECT season FROM worldcup_seasons WHERE is_active = 1 ORDER BY updated_at DESC, season DESC LIMIT 1"
+        ).fetchone()
+        return int(row["season"]) if row else _default_season()
+
+
+def set_active_season(season: int) -> None:
+    init_db()
+    with get_connection() as connection:
+        connection.execute("UPDATE worldcup_seasons SET is_active = 0")
+        connection.execute(
+            """
+            INSERT INTO worldcup_seasons (season, competition_code, competition_name, status, is_active, data_source)
+            VALUES (?, 'WC', 'World Cup', 'initialized', 1, 'manual')
+            ON CONFLICT(season) DO UPDATE SET
+                is_active = 1,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (int(season),),
+        )
 
 
 def get_all_teams() -> list[Team]:

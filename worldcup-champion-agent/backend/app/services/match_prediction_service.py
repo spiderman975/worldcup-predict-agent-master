@@ -93,16 +93,20 @@ def _db_stage_name(stage: int, stage_one_index: int | None = None) -> str:
 
 def _list_database_schedule() -> list[dict[str, Any]]:
     from app.services.data_scout_service import data_scout_service
+    from data.database import get_active_season
 
     data_scout_service.ensure_database()
+    active_season = get_active_season()
     with data_scout_service._connection() as connection:
-        _ensure_terminal_fixtures(connection)
+        _ensure_terminal_fixtures(connection, active_season)
         rows = connection.execute(
             """
-            SELECT match_id, stage, home_team, away_team, home_score, away_score, is_real, played_at, status
+            SELECT match_id, stage, home_team, away_team, home_score, away_score, is_real, played_at, status, season
             FROM matches
+            WHERE season = ?
             ORDER BY played_at IS NULL, played_at, id
-            """
+            """,
+            (active_season,),
         ).fetchall()
 
     ids = _team_id_by_name()
@@ -141,13 +145,16 @@ def _list_database_schedule() -> list[dict[str, Any]]:
                 "actual_away_score": away_score if away_score >= 0 else None,
                 "is_database_match": True,
                 "saved_prediction": _saved_prediction_summary(match_id),
+                "season": int(row["season"] or active_season),
             }
         )
     return schedule
 
 
-def _ensure_terminal_fixtures(connection: Any) -> None:
+def _ensure_terminal_fixtures(connection: Any, season: int) -> None:
     """Keep fixed late-knockout slots visible even before both teams are known."""
+    if int(season) != 2026:
+        return
 
     rows = connection.execute(
         """
@@ -199,8 +206,8 @@ def _upsert_terminal_fixture(
 ) -> None:
     connection.execute(
         """
-        INSERT INTO matches (match_id, stage, home_team, away_team, home_score, away_score, is_real, played_at, status)
-        VALUES (?, ?, ?, ?, -1, -1, 0, ?, 'scheduled')
+        INSERT INTO matches (match_id, stage, home_team, away_team, home_score, away_score, is_real, played_at, status, season, competition_code)
+        VALUES (?, ?, ?, ?, -1, -1, 0, ?, 'scheduled', 2026, 'WC')
         ON CONFLICT(match_id) DO UPDATE SET
             stage = excluded.stage,
             home_team = CASE
